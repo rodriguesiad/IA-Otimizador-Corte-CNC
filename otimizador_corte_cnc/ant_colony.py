@@ -119,9 +119,34 @@ class AntColony(LayoutDisplayMixin):
 
         return True
 
-    def update_pheromones(self, solutions):
+    def update_pheromones(self, solutions, Q=100):
         # Update the pheromone matrix based on the solutions found by the ants.
-        pass
+        # :param solutions: Lista de soluções geradas pelas formigas.
+        # :param Q: Fator de reforço, controla a influência das boas soluções (padrão: 100).
+
+         for solution in solutions:
+            # Define um critério de qualidade da solução
+            cost = self.evaluate_solution(solution) 
+            pheromone_deposit = Q / (cost + 1e-6)
+
+            # Percorrer cada recorte da solução e reforçar o feromônio na matriz
+            for recorte in solution:
+                x = recorte["x"] // self.min_width 
+                y = recorte["y"] // self.min_height
+
+                # Atualizar o feromônio da posição (x, y)
+                self.pheromone_matrix[y][x] += pheromone_deposit
+    
+    """
+        Método que avalia a qualidade de uma solução com base no desperdício de material.
+        Quanto menor o desperdício, melhor a solução.
+    """
+    def evaluate_solution(self, solution):
+        total_area = self.sheet_width * self.sheet_height
+        used_area = sum(recorte["largura"] * recorte["altura"] for recorte in solution)
+        waste = total_area - used_area
+
+        return waste
 
     def evaporate_pheromones(self, evaporation_rate=0.1):
         # Apply pheromone evaporation.
