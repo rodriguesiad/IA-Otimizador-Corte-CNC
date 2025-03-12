@@ -1,4 +1,5 @@
 from common.layout_display import LayoutDisplayMixin
+import random
 
 class AntColony(LayoutDisplayMixin):
     
@@ -41,6 +42,7 @@ class AntColony(LayoutDisplayMixin):
 
     def construct_solution(self, ant):
         # Construct a solution for the given ant using pheromone and heuristic information.
+        ant["path"] = []
 
         # Copia matriz de feromônio
         pheromone_matrix = self.pheromone_matrix
@@ -91,10 +93,30 @@ class AntColony(LayoutDisplayMixin):
                 "y": real_y
             })
 
+            ant["path"].append((real_x, real_y))
+
             # Atualizar a matriz de ocupação para evitar sobreposição
             self.update_occupancy_matrix(chosen_x, chosen_y, largura, altura, occupancy_matrix)
 
         return solution
+    
+    def update_occupancy_matrix(self, x, y, largura, altura, occupancy_matrix):
+        # Atualiza a matriz de ocupação marcando a posição do recorte.
+        # :param x: Posição x do recorte na matriz de feromônios.
+        # :param y: Posição y do recorte na matriz de feromônios.
+        # :param largura: Largura do recorte em pixels.
+        # :param altura: Altura do recorte em pixels.
+        # :param occupancy_matrix: Matriz de ocupação a ser atualizada.
+
+        # Converter dimensões do recorte para unidades da matriz de ocupação
+        recorte_width_cells = largura // self.min_width  
+        recorte_height_cells = altura // self.min_height
+
+        # Percorrer a área do recorte e marcar como ocupada na matriz
+        for i in range(y, y + recorte_height_cells):
+            for j in range(x, x + recorte_width_cells):
+                if 0 <= i < len(occupancy_matrix) and 0 <= j < len(occupancy_matrix[0]):
+                    occupancy_matrix[i][j] = 1 
 
     def is_valid_position(self, x, y, largura, altura, occupancy_matrix):
         # Método que verifica se uma posição (x, y) é válida para um recorte.
@@ -198,7 +220,8 @@ class AntColony(LayoutDisplayMixin):
 
             # Cada formiga gera uma solução
             for _ in range(self.num_ants):
-                solution = self.construct_solution(ant=None)
+                ant = {"id": _, "path": []}
+                solution = self.construct_solution(ant)
                 iteration_solutions.append(solution)
 
             # Atualizar feromônios com base nas soluções da iteração
@@ -209,6 +232,8 @@ class AntColony(LayoutDisplayMixin):
 
             # Armazena as soluções desta iteração
             self.solutions.extend(iteration_solutions)
+
+            print(f"Iteração {iteration + 1}/{self.num_iterations} concluída.")
 
          # Após todas as iterações, escolhemos a melhor solução encontrada
         self.optimized_layout = self.get_best_solution()
@@ -225,6 +250,9 @@ class AntColony(LayoutDisplayMixin):
 
         # Run the optimization (this should update self.optimized_layout)
         self.optimized_layout = self.run()
+
+        # Apresenta json da solução otimizada
+        print(self.optimized_layout)
         
         # Display optimized layout
         self.display_layout(self.optimized_layout, title="Optimized Layout - Ant Colony")
