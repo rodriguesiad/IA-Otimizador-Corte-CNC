@@ -2,7 +2,7 @@ from common.layout_display import LayoutDisplayMixin
 
 class AntColony(LayoutDisplayMixin):
     
-    def __init__(self, num_ants, num_iterations, sheet_width, sheet_height, recortes_disponiveis, pheromone_matrix):
+    def __init__(self, num_ants, num_iterations, sheet_width, sheet_height, recortes_disponiveis):
         """
         Initializes the Ant Colony optimizer.
         :param num_ants: Number of ants.
@@ -17,10 +17,13 @@ class AntColony(LayoutDisplayMixin):
         self.sheet_height = sheet_height
         self.initial_layout = recortes_disponiveis
         self.optimized_layout = None
-        self.pheromone_matrix = None
-        self.min_width = None
-        self.min_height = None
         self.solutions = None
+        self.min_width = 29
+        self.min_height = 4
+
+        # Chamar inicialização da matriz de feromônios diretamente
+        self.initialize_pheromones()
+        
         print("Ant Colony Optimization Initialized.")
 
     def initialize_pheromones(self):
@@ -30,8 +33,8 @@ class AntColony(LayoutDisplayMixin):
         self.min_height = 4
 
         # Definição do número de linhas e colunas da matriz de feromônios de acordo os passos
-        num_cols = sheet_width // self.min_width
-        num_rows = sheet_height // self.min_height
+        num_cols = self.sheet_width // self.min_width
+        num_rows = self.sheet_height // self.min_height
 
         # Criação matriz de feromônios inicializada com 1.0
         self.pheromone_matrix = [[1.0 for _ in range(num_cols)] for _ in range(num_rows)]
@@ -40,7 +43,7 @@ class AntColony(LayoutDisplayMixin):
         # Construct a solution for the given ant using pheromone and heuristic information.
 
         # Copia matriz de feromônio
-        pheromone_matrix = self.pheromone_matrix 
+        pheromone_matrix = self.pheromone_matrix
 
         # Cria uma matriz de ocupação para evitar sobreposição
         occupancy_matrix = [[0 for _ in range(len(pheromone_matrix[0]))] for _ in range(len(pheromone_matrix))]
@@ -124,19 +127,21 @@ class AntColony(LayoutDisplayMixin):
         # Update the pheromone matrix based on the solutions found by the ants.
         # :param solutions: Lista de soluções geradas pelas formigas.
         # :param Q: Fator de reforço, controla a influência das boas soluções (padrão: 100).
+        if not solutions:
+            return
 
-         for solution in solutions:
+        for solution in solutions:
             # Define um critério de qualidade da solução
             cost = self.evaluate_solution(solution) 
             pheromone_deposit = Q / (cost + 1e-6)
 
             # Percorrer cada recorte da solução e reforçar o feromônio na matriz
             for recorte in solution:
-                x = recorte["x"] // self.min_width 
-                y = recorte["y"] // self.min_height
+                x = int(recorte["x"] / self.min_width) 
+                y = int(recorte["y"] / self.min_height)
 
-                # Atualizar o feromônio da posição (x, y)
-                self.pheromone_matrix[y][x] += pheromone_deposit
+                if 0 <= y < len(self.pheromone_matrix) and 0 <= x < len(self.pheromone_matrix[0]):
+                    self.pheromone_matrix[y][x] += pheromone_deposit
     
     """
         Método que avalia a qualidade de uma solução com base no desperdício de material.
