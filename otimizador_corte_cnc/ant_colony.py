@@ -123,9 +123,13 @@ class AntColony(LayoutDisplayMixin):
         # Update the pheromone matrix based on the solutions found by the ants.
         pass
 
-    def evaporate_pheromones(self):
+    def evaporate_pheromones(self, evaporation_rate=0.1):
         # Apply pheromone evaporation.
-        pass
+        # :param evaporation_rate: Taxa de evaporação (ρ), entre 0 e 1. Quanto mais próximo de 1, mais rápida será a taxa de evaporação.
+
+        for i in range(len(self.pheromone_matrix)):
+            for j in range(len(self.pheromone_matrix[0])):
+                self.pheromone_matrix[i][j] *= (1 - evaporation_rate)
 
     def get_best_solution(self):
         # Return the best solution found.
