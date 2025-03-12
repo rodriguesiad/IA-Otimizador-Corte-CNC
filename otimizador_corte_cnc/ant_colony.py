@@ -2,7 +2,7 @@ from common.layout_display import LayoutDisplayMixin
 
 class AntColony(LayoutDisplayMixin):
     
-    def __init__(self, num_ants, num_iterations, sheet_width, sheet_height, recortes_disponiveis):
+    def __init__(self, num_ants, num_iterations, sheet_width, sheet_height, recortes_disponiveis, pheromone_matrix):
         """
         Initializes the Ant Colony optimizer.
         :param num_ants: Number of ants.
@@ -17,24 +17,107 @@ class AntColony(LayoutDisplayMixin):
         self.sheet_height = sheet_height
         self.initial_layout = recortes_disponiveis
         self.optimized_layout = None
+        self.pheromone_matrix = None
+        self.min_width = None
+        self.min_height = None
         print("Ant Colony Optimization Initialized.")
 
     def initialize_pheromones(self):
         # Initialize the pheromone matrix.
-        # Define passos com base na largura e altura mínima dos recortes disponíveis 
-        passo_largura = 29
-        passo_altura = 4
+        # Definição dos passos com base na largura e altura mínima dos recortes disponíveis 
+        self.min_width = 29
+        self.min_height = 4
 
-        # Define o número de linhas e colunas da matriz de feromônios de acordo os passos
-        num_cols = sheet_width // passo_largura
-        num_rows = sheet_height // passo_altura
+        # Definição do número de linhas e colunas da matriz de feromônios de acordo os passos
+        num_cols = sheet_width // self.min_width
+        num_rows = sheet_height // self.min_height
 
-        # Cria matriz de feromônios inicializada com 1.0
-        pheromone_matrix = [[1.0 for _ in range(num_cols)] for _ in range(num_rows)]
+        # Criação matriz de feromônios inicializada com 1.0
+        self.pheromone_matrix = [[1.0 for _ in range(num_cols)] for _ in range(num_rows)]
 
     def construct_solution(self, ant):
         # Construct a solution for the given ant using pheromone and heuristic information.
-        pass
+
+        # Copia matriz de feromônio
+        pheromone_matrix = self.pheromone_matrix 
+
+        # Cria uma matriz de ocupação para evitar sobreposição
+        occupancy_matrix = [[0 for _ in range(len(pheromone_matrix[0]))] for _ in range(len(pheromone_matrix))]
+
+        # Lista para armazenar a posição de cada recorte (soluçaõ)
+        solution = []
+
+        # Percorre os recortes e os posiciona na chapa
+        for recorte in self.initial_layout:
+            largura = recorte["largura"] if "largura" in recorte else recorte["r"] * 2
+            altura = recorte["altura"] if "altura" in recorte else recorte["r"] * 2
+
+            # Lista de posições válidas
+            valid_positions = []
+
+            # Verifica todas as posições possíveis dentro da chapa. 
+            for row in range(len(pheromone_matrix) - (altura // self.min_height)):
+                for col in range(len(pheromone_matrix[0]) - (largura // self.min_width)):
+                    if self.is_valid_position(col, row, largura, altura, occupancy_matrix):
+                        valid_positions.append((col, row))
+
+            # Se não houver posições válidas, pula esse recorte
+            if not valid_positions:
+                continue
+
+            # Escolha baseada nos feromônios (quanto maior o feromônio, maior a chance)
+            probabilities = [pheromone_matrix[y][x] for x, y in valid_positions]
+            total_pheromone = sum(probabilities)
+            probabilities = [p / total_pheromone for p in probabilities]
+
+            # Escolher a posição baseada na distribuição de probabilidade
+            chosen_index = random.choices(range(len(valid_positions)), weights=probabilities, k=1)[0]
+            chosen_x, chosen_y = valid_positions[chosen_index]
+
+            # Converter coordenadas da matriz para coordenadas reais na chapa
+            real_x = chosen_x * self.min_width
+            real_y = chosen_y * self.min_height
+
+            # Adicionar à solução
+            solution.append({
+                "tipo": recorte["tipo"],
+                "largura": largura,
+                "altura": altura,
+                "x": real_x,
+                "y": real_y
+            })
+
+            # Atualizar a matriz de ocupação para evitar sobreposição
+            self.update_occupancy_matrix(chosen_x, chosen_y, largura, altura, occupancy_matrix)
+
+        return solution
+
+    """
+        Método que verifica se uma posição (x, y) é válida para um recorte.
+        Retorna True se:
+        - O recorte estiver dentro da chapa.
+        - O recorte não sobrepor outro recorte.
+    """
+    def is_valid_position(self, x, y, largura, altura, occupancy_matrix):
+        # Dimensões da matriz de ocupação (quantidade de células)
+        num_rows = len(occupancy_matrix)
+        num_cols = len(occupancy_matrix[0])
+
+        # Converte as dimensões do recorte para células na matriz de ocupação
+        recorte_width_cells = largura // self.min_width
+        recorte_height_cells = altura // self.min_height
+
+        # Verifica se a peça cabe dentro da chapa (limites da matriz)
+        if x + recorte_width_cells > num_cols or y + recorte_height_cells > num_rows:
+            return False
+
+        # Verifica se a posição está livre (sem sobreposição)
+        for i in range(y, y + recorte_height_cells):
+            for j in range(x, x + recorte_width_cells):
+                if occupancy_matrix[i][j] == 1:
+                    return False
+
+        return True
 
     def update_pheromones(self, solutions):
         # Update the pheromone matrix based on the solutions found by the ants.
