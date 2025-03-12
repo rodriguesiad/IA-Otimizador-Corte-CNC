@@ -1,6 +1,7 @@
 from common.layout_display import LayoutDisplayMixin
 
 class AntColony(LayoutDisplayMixin):
+    
     def __init__(self, num_ants, num_iterations, sheet_width, sheet_height, recortes_disponiveis):
         """
         Initializes the Ant Colony optimizer.
@@ -20,7 +21,16 @@ class AntColony(LayoutDisplayMixin):
 
     def initialize_pheromones(self):
         # Initialize the pheromone matrix.
-        pass
+        # Define passos com base na largura e altura mínima dos recortes disponíveis 
+        passo_largura = 29
+        passo_altura = 4
+
+        # Define o número de linhas e colunas da matriz de feromônios de acordo os passos
+        num_cols = sheet_width // passo_largura
+        num_rows = sheet_height // passo_altura
+
+        # Cria matriz de feromônios inicializada com 1.0
+        pheromone_matrix = [[1.0 for _ in range(num_cols)] for _ in range(num_rows)]
 
     def construct_solution(self, ant):
         # Construct a solution for the given ant using pheromone and heuristic information.
