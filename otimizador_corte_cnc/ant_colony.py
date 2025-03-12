@@ -96,13 +96,12 @@ class AntColony(LayoutDisplayMixin):
 
         return solution
 
-    """
-        Método que verifica se uma posição (x, y) é válida para um recorte.
-        Retorna True se:
-        - O recorte estiver dentro da chapa.
-        - O recorte não sobrepor outro recorte.
-    """
     def is_valid_position(self, x, y, largura, altura, occupancy_matrix):
+        # Método que verifica se uma posição (x, y) é válida para um recorte.
+        # Retorna True se:
+        # - O recorte estiver dentro da chapa.
+        # - O recorte não sobrepor outro recorte.
+
         # Dimensões da matriz de ocupação (quantidade de células)
         num_rows = len(occupancy_matrix)
         num_cols = len(occupancy_matrix[0])
@@ -143,11 +142,10 @@ class AntColony(LayoutDisplayMixin):
                 if 0 <= y < len(self.pheromone_matrix) and 0 <= x < len(self.pheromone_matrix[0]):
                     self.pheromone_matrix[y][x] += pheromone_deposit
     
-    """
-        Método que avalia a qualidade de uma solução com base no desperdício de material.
-        Quanto menor o desperdício, melhor a solução.
-    """
     def evaluate_solution(self, solution):
+        # Método que avalia a qualidade de uma solução com base no desperdício de material.
+        # Quanto menor o desperdício, melhor a solução.
+ 
         total_area = self.sheet_width * self.sheet_height
         used_area = sum(recorte["largura"] * recorte["altura"] for recorte in solution)
         waste = total_area - used_area
