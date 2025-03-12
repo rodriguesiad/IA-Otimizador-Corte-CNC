@@ -1,5 +1,6 @@
 from common.layout_display import LayoutDisplayMixin
 import random
+import math
 
 class AntColony(LayoutDisplayMixin):
     
@@ -55,8 +56,12 @@ class AntColony(LayoutDisplayMixin):
 
         # Percorre os recortes e os posiciona na chapa
         for recorte in self.initial_layout:
-            largura = recorte["largura"] if "largura" in recorte else recorte["r"] * 2
-            altura = recorte["altura"] if "altura" in recorte else recorte["r"] * 2
+            if recorte["tipo"] == "circular":
+                raio = recorte["r"] 
+                largura = altura = raio * 2
+            else:
+                largura = recorte["largura"]
+                altura = recorte["altura"]
 
             # Lista de posições válidas
             valid_positions = []
@@ -85,13 +90,21 @@ class AntColony(LayoutDisplayMixin):
             real_y = chosen_y * self.min_height
 
             # Adicionar à solução
-            solution.append({
-                "tipo": recorte["tipo"],
-                "largura": largura,
-                "altura": altura,
-                "x": real_x,
-                "y": real_y
-            })
+            if recorte["tipo"] == "circular":
+                solution.append({
+                    "tipo": "circular",
+                    "r": raio, 
+                    "x": real_x,
+                    "y": real_y
+                })
+            else:
+                solution.append({
+                    "tipo": recorte["tipo"],
+                    "largura": largura,
+                    "altura": altura,
+                    "x": real_x,
+                    "y": real_y
+                })
 
             ant["path"].append((real_x, real_y))
 
@@ -169,7 +182,14 @@ class AntColony(LayoutDisplayMixin):
         # Quanto menor o desperdício, melhor a solução.
  
         total_area = self.sheet_width * self.sheet_height
-        used_area = sum(recorte["largura"] * recorte["altura"] for recorte in solution)
+        used_area = 0 
+
+        for recorte in solution:
+            if recorte["tipo"] == "circular":
+                used_area += math.pi * (recorte["r"] ** 2)  # Usa área do círculo
+            else:
+                used_area += recorte["largura"] * recorte["altura"]  
+
         waste = total_area - used_area
 
         return waste
@@ -251,9 +271,6 @@ class AntColony(LayoutDisplayMixin):
         # Run the optimization (this should update self.optimized_layout)
         self.optimized_layout = self.run()
 
-        # Apresenta json da solução otimizada
-        print(self.optimized_layout)
-        
         # Display optimized layout
         self.display_layout(self.optimized_layout, title="Optimized Layout - Ant Colony")
         return self.optimized_layout
