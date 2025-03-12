@@ -20,6 +20,7 @@ class AntColony(LayoutDisplayMixin):
         self.pheromone_matrix = None
         self.min_width = None
         self.min_height = None
+        self.solutions = None
         print("Ant Colony Optimization Initialized.")
 
     def initialize_pheromones(self):
@@ -158,7 +159,25 @@ class AntColony(LayoutDisplayMixin):
 
     def get_best_solution(self):
         # Return the best solution found.
-        pass
+
+        # Verifica a existência de soluções
+        if not hasattr(self, 'solutions') or not self.solutions:
+            return None  
+        
+        # Inicializa a melhor solução com um valor muito alto de desperdício
+        best_solution = None
+        best_waste = float('inf')
+        
+        # Percorre todas as soluções encontradas pelas formigas
+        for solution in self.solutions:
+            waste = self.evaluate_solution(solution)
+
+            # Se for a melhor até agora, atualiza
+            if waste < best_waste:
+                best_solution = solution
+                best_waste = waste
+
+        return best_solution 
 
     def run(self):
         # Main loop of the ant colony algorithm.
@@ -167,11 +186,32 @@ class AntColony(LayoutDisplayMixin):
         #   2. Update pheromones.
         #   3. Optionally, record the best solution.
         # This method should return the optimized layout (JSON structure).
-        # TODO: Implement the ant colony optimization here.
+        
+        # Lista para armazenar todas as soluções ao longo das iterações
+        self.solutions = []
 
-        # Temporary return statement to avoid errors
-        self.optimized_layout = self.initial_layout
+        for iteration in range(self.num_iterations):
+            iteration_solutions = []  # Lista de soluções de cada iteração
+
+            # Cada formiga gera uma solução
+            for _ in range(self.num_ants):
+                solution = self.construct_solution(ant=None)
+                iteration_solutions.append(solution)
+
+            # Atualizar feromônios com base nas soluções da iteração
+            self.update_pheromones(iteration_solutions)
+
+            # Evaporação dos feromônios para incentivar exploração
+            self.evaporate_pheromones()
+
+            # Armazena as soluções desta iteração
+            self.solutions.extend(iteration_solutions)
+
+         # Após todas as iterações, escolhemos a melhor solução encontrada
+        self.optimized_layout = self.get_best_solution()
+
         return self.optimized_layout
+
 
     def optimize_and_display(self):
         """
