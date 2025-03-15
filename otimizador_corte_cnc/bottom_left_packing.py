@@ -216,7 +216,11 @@ class BottomLeftPacking (LayoutDisplayMixin):
 
         for peca in recortes:
             encontrou_posicao = False
-            rotacoes = [0] if peca["tipo"] == "circular" else range(0, 100, 10)
+                 # Retângulos só poderão rotacionar em 0 ou 90
+            if peca["tipo"] == 'retangular':
+                rotacoes = [0, 90]
+            else:
+                rotacoes = [0] if peca["tipo"] == "circular" else range(0, 100, 10)
 
             for rotacao in rotacoes:
                 peca["rotacao"] = rotacao

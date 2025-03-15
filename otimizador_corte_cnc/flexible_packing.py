@@ -267,8 +267,12 @@ class FlexiblePacking:
         for peca in self.recortes:
             encontrou_posicao = False
             
-            # Mantém a rotação original primeiro, depois testa outras de 0 a 90 (se necessário)
-            rotacoes = [peca.get("rotacao", 0)] + [r for r in range(0, 100, 10) if r != peca.get("rotacao", 0)]
+            # Retângulos só poderão rotacionar em 0 ou 90
+            if peca["tipo"] == 'retangular':
+                rotacoes = [0, 90]
+            else:
+                # Mantém a rotação original primeiro, depois testa outras de 0 a 90 (se necessário)
+                rotacoes = [0] if peca["tipo"] == "circular" else [peca.get("rotacao", 0)] + [r for r in range(0, 100, 10) if r != peca.get("rotacao", 0)]
 
             for rotacao in rotacoes:
                 peca["rotacao"] = rotacao
