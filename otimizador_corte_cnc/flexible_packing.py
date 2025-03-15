@@ -118,7 +118,7 @@ class FlexiblePacking:
                             if self.grid[cx, cy] == 1:
                                 return False
 
-            # 🔴 Adiciona verificação específica para círculos já posicionados
+            #  Adiciona verificação específica para círculos já posicionados
             for outra_peca in self.layout:
                 if outra_peca["tipo"] == "circular":
                     outro_raio = outra_peca["r"]
