@@ -3,6 +3,15 @@ import copy
 import math
 import numpy as np
 
+"""
+Implementa a heurística Bottom-Left Packing para otimizar a disposição de recortes dentro de uma chapa.
+
+- Posiciona as peças começando do canto inferior esquerdo, movendo-as para a posição mais baixa e mais à esquerda disponível.
+- Suporta peças retangulares, circulares e diamantes, incluindo rotações para melhor aproveitamento do espaço.
+- Utiliza uma matriz de ocupação (grid) para verificar colisões e garantir que as peças não se sobreponham.
+- Adiciona uma margem opcional entre os recortes para evitar cortes imprecisos ou colisões mecânicas.
+- Melhora a eficiência do empacotamento ao ordenar os recortes do maior para o menor antes de posicioná-los.
+"""
 class BottomLeftPacking (LayoutDisplayMixin):
     def __init__(self, sheet_width, sheet_height, recortes_disponiveis):
         self.sheet_width = sheet_width
