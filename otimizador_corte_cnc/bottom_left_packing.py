@@ -10,6 +10,7 @@ class BottomLeftPacking (LayoutDisplayMixin):
         self.recortes = sorted(recortes_disponiveis, key=lambda p: self.get_area(p), reverse=True)
         self.layout = []
         self.grid = np.zeros((sheet_width, sheet_height), dtype=int)
+        self.margem = 1
 
     def get_area(self, peca):
         """ Retorna a área da peça """
@@ -69,7 +70,6 @@ class BottomLeftPacking (LayoutDisplayMixin):
         Verifica se a peça pode ser colocada sem ultrapassar os limites da chapa e sem sobreposição.
         Agora adiciona uma margem de 1 pixel entre os recortes.
         """
-        margem = 1  # Margem de 1 pixel
 
         if peca["tipo"] == "circular":
             raio = peca["r"]
@@ -77,13 +77,13 @@ class BottomLeftPacking (LayoutDisplayMixin):
             centro_y = y + raio
 
             # Evita que o círculo ultrapasse os limites da chapa
-            if centro_x - raio - margem < 0 or centro_x + raio + margem > self.sheet_width or centro_y - raio - margem < 0 or centro_y + raio + margem > self.sheet_height:
+            if centro_x - raio - self.margem < 0 or centro_x + raio + self.margem > self.sheet_width or centro_y - raio - self.margem < 0 or centro_y + raio + self.margem > self.sheet_height:
                 return False
 
             # Verifica sobreposição com outras peças
-            for i in range(-raio - margem, raio + margem + 1):
-                for j in range(-raio - margem, raio + margem + 1):
-                    if i ** 2 + j ** 2 <= (raio + margem) ** 2:  # Dentro do círculo expandido
+            for i in range(-raio - self.margem, raio + self.margem + 1):
+                for j in range(-raio - self.margem, raio + self.margem + 1):
+                    if i ** 2 + j ** 2 <= (raio + self.margem) ** 2:
                         cx, cy = int(centro_x + i), int(centro_y + j)
                         if 0 <= cx < self.sheet_width and 0 <= cy < self.sheet_height:
                             if self.grid[cx, cy] == 1:
@@ -94,14 +94,14 @@ class BottomLeftPacking (LayoutDisplayMixin):
 
             # Verifica se os vértices estão dentro dos limites da chapa
             for vx, vy in vertices:
-                if not (margem <= vx < self.sheet_width - margem and margem <= vy < self.sheet_height - margem):
+                if not (self.margem <= vx < self.sheet_width - self.margem and self.margem <= vy < self.sheet_height - self.margem):
                     return False
 
             # Verifica sobreposição de TODO o diamante
-            min_x = max(int(min(v[0] for v in vertices)) - margem, 0)
-            max_x = min(int(max(v[0] for v in vertices)) + margem, self.sheet_width - 1)
-            min_y = max(int(min(v[1] for v in vertices)) - margem, 0)
-            max_y = min(int(max(v[1] for v in vertices)) + margem, self.sheet_height - 1)
+            min_x = max(int(min(v[0] for v in vertices)) - self.margem, 0)
+            max_x = min(int(max(v[0] for v in vertices)) + self.margem, self.sheet_width - 1)
+            min_y = max(int(min(v[1] for v in vertices)) - self.margem, 0)
+            max_y = min(int(max(v[1] for v in vertices)) + self.margem, self.sheet_height - 1)
 
             for i in range(min_x, max_x + 1):
                 for j in range(min_y, max_y + 1):
@@ -113,12 +113,12 @@ class BottomLeftPacking (LayoutDisplayMixin):
             largura, altura = self.get_bounding_box(peca)
 
             # Evita que a peça ultrapasse os limites considerando a margem
-            if x - margem < 0 or y - margem < 0 or x + largura + margem > self.sheet_width or y + altura + margem > self.sheet_height:
+            if x - self.margem < 0 or y - self.margem < 0 or x + largura + self.margem > self.sheet_width or y + altura + self.margem > self.sheet_height:
                 return False  
 
             # Verifica se há sobreposição considerando a margem
-            for i in range(-margem, largura + margem):
-                for j in range(-margem, altura + margem):
+            for i in range(-self.margem, largura + self.margem):
+                for j in range(-self.margem, altura + self.margem):
                     if 0 <= x + i < self.sheet_width and 0 <= y + j < self.sheet_height:
                         if self.grid[x + i, y + j] == 1:
                             return False
@@ -143,7 +143,6 @@ class BottomLeftPacking (LayoutDisplayMixin):
         """
         Marca a área ocupada pela peça na matriz de ocupação, garantindo uma margem de 1 pixel.
         """
-        margem = 1  # Margem de 1 pixel entre os recortes
         x, y = peca["x"], peca["y"]
 
         if peca["tipo"] == "circular":
@@ -151,9 +150,9 @@ class BottomLeftPacking (LayoutDisplayMixin):
             centro_x = x + raio
             centro_y = y + raio
 
-            for i in range(-raio - margem, raio + margem + 1):
-                for j in range(-raio - margem, raio + margem + 1):
-                    if i ** 2 + j ** 2 <= (raio + margem) ** 2:
+            for i in range(-raio - self.margem, raio + self.margem + 1):
+                for j in range(-raio - self.margem, raio + self.margem + 1):
+                    if i ** 2 + j ** 2 <= (raio + self.margem) ** 2:
                         cx, cy = int(centro_x + i), int(centro_y + j)
                         if 0 <= cx < self.sheet_width and 0 <= cy < self.sheet_height:
                             self.grid[cx, cy] = 1
@@ -162,10 +161,10 @@ class BottomLeftPacking (LayoutDisplayMixin):
             vertices = self.get_rotated_vertices(peca, x, y)
 
             # Calcula os limites do diamante na grade
-            min_x = max(int(min(v[0] for v in vertices)) - margem, 0)
-            max_x = min(int(max(v[0] for v in vertices)) + margem, self.sheet_width - 1)
-            min_y = max(int(min(v[1] for v in vertices)) - margem, 0)
-            max_y = min(int(max(v[1] for v in vertices)) + margem, self.sheet_height - 1)
+            min_x = max(int(min(v[0] for v in vertices)) - self.margem, 0)
+            max_x = min(int(max(v[0] for v in vertices)) + self.margem, self.sheet_width - 1)
+            min_y = max(int(min(v[1] for v in vertices)) - self.margem, 0)
+            max_y = min(int(max(v[1] for v in vertices)) + self.margem, self.sheet_height - 1)
 
             # Preenche o interior do diamante na grade
             for i in range(min_x, max_x + 1):
@@ -177,8 +176,8 @@ class BottomLeftPacking (LayoutDisplayMixin):
         else:            
             largura, altura = self.get_bounding_box(peca)
 
-            for i in range(-margem, largura + margem):
-                for j in range(-margem, altura + margem):
+            for i in range(-self.margem, largura + self.margem):
+                for j in range(-self.margem, altura + self.margem):
                     if 0 <= x + i < self.sheet_width and 0 <= y + j < self.sheet_height:
                         self.grid[x + i, y + j] = 1
 
@@ -214,17 +213,16 @@ class BottomLeftPacking (LayoutDisplayMixin):
                 peca["rotacao"] = rotacao
                 largura, altura = self.get_bounding_box(peca)
 
-                for y in range(self.sheet_height - altura + 1 - 1):  # 🔹 -1 para garantir o espaço
-                    for x in range(self.sheet_width - largura + 1 - 1):  # 🔹 -1 para garantir o espaço
+                for y in range(self.sheet_height - altura + self.margem - self.margem):  
+                    for x in range(self.sheet_width - largura + self.margem - self.margem): 
                         if self.cabe_no_espaco(peca, x, y):
                             x, y = self.ajustar_posicao_para_dentro(peca, x, y)
 
                             # Atualiza a peça com novas dimensões após rotação
                             peca["x"], peca["y"] = x, y
-                            peca["largura"], peca["altura"] = largura, altura
 
                             self.layout.append(copy.deepcopy(peca))
-                            self.marcar_ocupacao(peca)  # Atualiza a malha ocupada
+                            self.marcar_ocupacao(peca)
                             encontrou_posicao = True
                             break  
                     if encontrou_posicao:
