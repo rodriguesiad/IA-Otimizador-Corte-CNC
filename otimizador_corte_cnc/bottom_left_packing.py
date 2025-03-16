@@ -73,6 +73,17 @@ class BottomLeftPacking (LayoutDisplayMixin):
         ]
 
         return vertices_rotacionados
+    
+    def get_circle_mask(self, raio):
+        """
+        Gera uma máscara booleana para um círculo com raio 'raio' e margem self.margem.
+        A máscara terá tamanho = 2*(raio + margem) + 1 e True para os pontos dentro do círculo expandido.
+        """
+        total = raio + self.margem
+        # Cria uma grade de coordenadas
+        y, x = np.ogrid[-total:total+1, -total:total+1]
+        mask = x**2 + y**2 <= (raio + self.margem)**2
+        return mask
 
     def cabe_no_espaco(self, peca, x, y):
         """
@@ -85,19 +96,32 @@ class BottomLeftPacking (LayoutDisplayMixin):
             centro_x = x + raio
             centro_y = y + raio
 
-            # Evita que o círculo ultrapasse os limites da chapa
-            if centro_x - raio - self.margem < 0 or centro_x + raio + self.margem > self.sheet_width or centro_y - raio - self.margem < 0 or centro_y + raio + self.margem > self.sheet_height:
+            # Verifica se o círculo (com margem) está dentro dos limites
+            if (centro_x - raio - self.margem < 0 or 
+                centro_x + raio + self.margem > self.sheet_width or 
+                centro_y - raio - self.margem < 0 or 
+                centro_y + raio + self.margem > self.sheet_height):
                 return False
 
-            # Verifica sobreposição com outras peças
-            for i in range(-raio - self.margem, raio + self.margem + 1):
-                for j in range(-raio - self.margem, raio + self.margem + 1):
-                    if i ** 2 + j ** 2 <= (raio + self.margem) ** 2:
-                        cx, cy = int(centro_x + i), int(centro_y + j)
-                        if 0 <= cx < self.sheet_width and 0 <= cy < self.sheet_height:
-                            if self.grid[cx, cy] == 1:
-                                return False
+            # Obtém a máscara do círculo
+            mask = self.get_circle_mask(raio)
+            mask_shape = mask.shape
 
+            # Determina a posição inicial da máscara no grid
+            start_x = int(round(centro_x - (raio + self.margem)))
+            start_y = int(round(centro_y - (raio + self.margem)))
+
+            # Verifica a sobreposição usando a máscara
+            for i in range(mask_shape[0]):
+                for j in range(mask_shape[1]):
+                    if mask[i, j]:
+                        grid_x = start_x + i
+                        grid_y = start_y + j
+                        if grid_x < 0 or grid_x >= self.sheet_width or grid_y < 0 or grid_y >= self.sheet_height:
+                            continue
+                        if self.grid[grid_x, grid_y] == 1:
+                            return False
+                        
         elif peca["tipo"] == "diamante":
             vertices = self.get_rotated_vertices(peca, x, y)
 
@@ -159,12 +183,18 @@ class BottomLeftPacking (LayoutDisplayMixin):
             centro_x = x + raio
             centro_y = y + raio
 
-            for i in range(-raio - self.margem, raio + self.margem + 1):
-                for j in range(-raio - self.margem, raio + self.margem + 1):
-                    if i ** 2 + j ** 2 <= (raio + self.margem) ** 2:
-                        cx, cy = int(centro_x + i), int(centro_y + j)
-                        if 0 <= cx < self.sheet_width and 0 <= cy < self.sheet_height:
-                            self.grid[cx, cy] = 1
+            mask = self.get_circle_mask(raio)
+            mask_shape = mask.shape
+            start_x = int(round(centro_x - (raio + self.margem)))
+            start_y = int(round(centro_y - (raio + self.margem)))
+            
+            for i in range(mask_shape[0]):
+                for j in range(mask_shape[1]):
+                    if mask[i, j]:
+                        grid_x = start_x + i
+                        grid_y = start_y + j
+                        if 0 <= grid_x < self.sheet_width and 0 <= grid_y < self.sheet_height:
+                            self.grid[grid_x, grid_y] = 1
 
         elif peca["tipo"] == "diamante":
             vertices = self.get_rotated_vertices(peca, x, y)
