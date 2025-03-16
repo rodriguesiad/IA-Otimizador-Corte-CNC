@@ -1,5 +1,4 @@
 from ant_colony import AntColony
-from genetic_algorithm import GeneticAlgorithm
 
 def main():
     # Define sheet dimensions
@@ -28,23 +27,10 @@ def main():
     ant_optimized_layout = ant_optimizer.optimize_and_display()
     
 
-    # Instantiate and run Genetic Algorithm.
-    """ga_optimizer = GeneticAlgorithm(TAM_POP=50, recortes_disponiveis=recortes_disponiveis,
-                                    sheet_width=sheet_width, sheet_height=sheet_height, numero_geracoes=100)
-    print("Running Genetic Algorithm...")
-    ga_optimized_layout = ga_optimizer.optimize_and_display()
-    """
-
     # Optionally, print out the results (optimized layouts)
     print("Ant Colony Optimized Layout:")
     for item in ant_optimized_layout or []:
         print(item)
     
-
-    """print("Genetic Algorithm Optimized Layout:")
-    for item in ga_optimized_layout or []:
-        print(item)
-    """
-
 if __name__ == "__main__":
     main()
