@@ -1,0 +1,241 @@
+from common.layout_display import LayoutDisplayMixin
+from flexible_packing import FlexiblePacking
+import random
+import copy
+from common.packing_base import PackingBase
+
+class AntColony(LayoutDisplayMixin, PackingBase):
+    def __init__(self, num_ants, num_iterations, sheet_width, sheet_height, recortes_disponiveis):
+        """
+        Initializes the Ant Colony optimizer.
+        :param num_ants: Number of ants.
+        :param num_iterations: Number of iterations to run.
+        :param sheet_width: Width of the cutting sheet.
+        :param sheet_height: Height of the cutting sheet.
+        :param recortes_disponiveis: List of available parts (JSON structure).
+        """
+        print("Ant Colony para Otimização do Corte de Chapa. Executado por Iad.")
+
+        self.num_ants = num_ants
+        self.num_iterations = num_iterations
+        self.sheet_width = sheet_width
+        self.sheet_height = sheet_height
+        self.initial_layout = recortes_disponiveis
+        self.optimized_layout = None
+        self.initialize_pheromones()
+        print("Ant Colony Optimization Initialized.")
+
+    def initialize_pheromones(self):
+        """
+        Inicializa as estruturas de feromônio para as decisões:
+          - Configuração de varredura: opções para a ordem de varredura da chapa.
+          - Ordem dos recortes: uma lista de feromônios, um para cada recorte.
+          - Rotação: níveis de feromônio para cada ângulo possível (0, 10, ..., 90).
+          - Direção de priorização: define se a busca será priorizada horizontalmente ou verticalmente.
+        Inicializamos todos os níveis com 1.0.
+        """
+
+        self.pheromones_scan = {
+            "left_to_right_top_to_bottom": 1.0,
+            "right_to_left_bottom_to_top": 1.0,
+            "left_to_right_bottom_to_top": 1.0,
+            "right_to_left_top_to_bottom": 1.0
+        }
+        self.pheromones_order = [1.0 for _ in range(len(self.initial_layout))]
+        self.pheromones_rotation = {angle: 1.0 for angle in range(0, 100, 10)}
+        self.pheromones_direction = {"horizontal": 1.0, "vertical": 1.0}
+
+    def construct_solution(self, ant):
+        # 1. Seleção da configuração de varredura
+        scan_options = list(self.pheromones_scan.keys())
+        scan_weights = [self.pheromones_scan[opt] for opt in scan_options]
+        selected_scan = random.choices(scan_options, weights=scan_weights, k=1)[0]
+        
+        if selected_scan == "left_to_right_top_to_bottom":
+            varrer_esquerda_direita = True
+            varrer_cima_baixo = True
+        elif selected_scan == "right_to_left_bottom_to_top":
+            varrer_esquerda_direita = False
+            varrer_cima_baixo = False
+        elif selected_scan == "left_to_right_bottom_to_top":
+            varrer_esquerda_direita = True
+            varrer_cima_baixo = False
+        elif selected_scan == "right_to_left_top_to_bottom":
+            varrer_esquerda_direita = False
+            varrer_cima_baixo = True
+
+        # 2. Ordenação dos recortes
+        recortes = copy.deepcopy(self.initial_layout)
+        recortes.sort(key=lambda p: self.get_area(p), reverse=True)
+        
+        # 3. Escolha da rotação para cada recorte
+        if random.random() < 0.1:
+            for peca in recortes:
+                if peca["tipo"] ==  "diamante":
+                    angles = list(self.pheromones_rotation.keys())
+                    rotation_weights = [self.pheromones_rotation[angle] for angle in angles]
+                    peca["rotacao"] = random.choices(angles, weights=rotation_weights, k=1)[0]
+                elif peca["tipo"] == "retangular":
+                    angles = [0,90]
+                    rotation_weights = [self.pheromones_rotation[angle] for angle in angles]
+                    peca["rotacao"] = random.choices(angles, weights=rotation_weights, k=1)[0]
+                else:
+                    peca["rotacao"] = 0
+
+        # 4. Seleção da priorização com base no feromônio
+        direction_choice = random.choices(
+            ["horizontal", "vertical"],
+            weights=[self.pheromones_direction["horizontal"], self.pheromones_direction["vertical"]],
+            k=1
+        )[0]
+        priorizar_horizontal = (direction_choice == "horizontal")
+
+        # 5. Constrói o layout com FlexiblePacking
+        gerar_individuo = FlexiblePacking(
+            sheet_width=self.sheet_width,
+            sheet_height=self.sheet_height,
+            recortes_disponiveis=recortes,
+            varrer_esquerda_direita=varrer_esquerda_direita,
+            varrer_cima_baixo=varrer_cima_baixo,
+            priorizar_horizontal=priorizar_horizontal,
+            margem=1
+        )
+        layout = gerar_individuo.empacotar()
+        
+        print('Indivíduo criado!')
+        # Retorne o layout juntamente com as escolhas feitas
+        return {"layout": layout, "scan": selected_scan, "direction": direction_choice}
+
+
+    def update_pheromones(self, solutions):
+        """
+        Atualiza os níveis de feromônio com base nas soluções construídas pelas formigas.
+        Para cada solução, deposita uma quantidade de feromônio proporcional à sua qualidade.
+        Aqui, assumimos que uma solução melhor tem um valor de qualidade (fitness) maior.
+        Atualizamos os feromônios das decisões (varredura, ordem e rotação) que levaram à solução.
+        """
+        for sol in solutions:
+            quality = sol["quality"]
+            # Atualiza feromônios para a configuração de varredura
+            selected_scan = sol["scan"]
+            self.pheromones_scan[selected_scan] += quality
+
+            # Atualiza feromônios para a rotação de cada peça rotacionável
+            for angle in sol["rotation"].values():
+                self.pheromones_rotation[angle] += quality
+
+            # Atualiza feromônios para a ordem dos recortes
+            for i in range(len(self.pheromones_order)):
+                self.pheromones_order[i] += quality * 0.01  # fator pequeno para atualização
+
+            # Atualiza feromônios para a direção de priorização
+            direction = sol.get("direction", "horizontal")
+            self.pheromones_direction[direction] += quality
+
+    def evaporate_pheromones(self):
+        """
+        Aplica evaporação aos feromônios para diminuir os níveis de feromônio existentes,
+        evitando que valores muito altos impeçam a exploração de novas soluções.
+        Multiplica cada feromônio por um fator de evaporação (por exemplo, 0.9).
+        """
+        evap_factor = 0.9
+
+        for key in self.pheromones_scan:
+            self.pheromones_scan[key] *= evap_factor
+
+        for angle in self.pheromones_rotation:
+            self.pheromones_rotation[angle] *= evap_factor
+
+        # Atualiza a lista de feromônios para ordem
+        self.pheromones_order = [val * evap_factor for val in self.pheromones_order]
+
+        for key in self.pheromones_direction:
+            self.pheromones_direction[key] *= evap_factor
+
+    def get_best_solution(self, solutions):
+        """
+        Dado um conjunto de soluções, retorna a solução com maior qualidade.
+        Supondo que cada solução possua a chave 'quality'.
+        """
+        best = None
+        best_quality = -float("inf")
+        for sol in solutions:
+            if sol["quality"] > best_quality:
+                best_quality = sol["quality"]
+                best = sol["layout"]
+        return best
+
+    def run(self):
+        """
+        Loop principal do algoritmo de Colônia de Formigas:
+        1. Inicializa os feromônios.
+        2. Para cada iteração:
+            - Cada formiga constrói uma solução.
+            - Avalia a qualidade de cada solução (usando um critério, por exemplo, aproveitamento de área).
+            - Atualiza os feromônios com base nas soluções.
+            - Aplica evaporação aos feromônios.
+            - (Opcional) Armazena a melhor solução da iteração.
+        3. Retorna a melhor solução encontrada (layout).
+        """
+        # Lista para armazenar soluções de cada iteração
+        best_overall = None
+        best_overall_quality = -float("inf")
+        
+        print("Iniciando o loop principal do Ant Colony...")
+
+        for it in range(self.num_iterations):
+            solutions = []
+            for ant in range(self.num_ants):
+                sol = self.construct_solution(ant)
+                layout = sol["layout"]
+                quality = self.evaluate_layout(layout)
+                solution_info = {
+                    "layout": layout,
+                    "scan": sol["scan"],
+                    "rotation": {i: peca["rotacao"] for i, peca in enumerate(self.initial_layout) if peca["tipo"] in ["retangular", "diamante"]},
+                    "direction": sol["direction"],
+                    "quality": quality
+                }
+
+                solutions.append(solution_info)
+                
+                # Atualiza a melhor solução global
+                if quality > best_overall_quality:
+                    best_overall_quality = quality
+                    best_overall = layout
+            
+            # Atualiza os feromônios com base nas soluções desta iteração
+            self.update_pheromones(solutions)
+            # Aplica evaporação
+            self.evaporate_pheromones()
+            print(f"Iteração {it}: Melhor qualidade = {best_overall_quality}")
+        
+        self.optimized_layout = best_overall
+        return self.optimized_layout
+
+    def evaluate_layout(self, layout):
+        """
+        Avalia a qualidade de um layout. Por exemplo, pode ser o aproveitamento da área (área utilizada/área total)
+        menos penalizações (como sobreposição ou desperdício). Aqui, você pode reutilizar ou adaptar o método evaluate
+        que já possui, mas retornando um valor numérico.
+        """
+        total_sheet_area = self.sheet_width * self.sheet_height
+        used_area = 0.0
+        for peca in layout:
+            used_area += self.get_area(peca)
+        return used_area / total_sheet_area 
+
+    def optimize_and_display(self):
+        """
+        Displays the initial layout, runs the optimization, and then displays the optimized layout.
+        """
+        # Display initial layout
+        self.display_layout(self.initial_layout, title="Initial Layout - Ant Colony")
+
+        # Run the optimization (this should update self.optimized_layout)
+        self.optimized_layout = self.run()
+        
+        # Display optimized layout
+        self.display_layout(self.optimized_layout, title="Optimized Layout - Ant Colony")
+        return self.optimized_layout
+    
