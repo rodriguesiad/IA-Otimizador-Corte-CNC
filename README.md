@@ -82,4 +82,9 @@ Cada execução exibirá o layout inicial e o layout otimizado utilizando o mét
 - Observou-se que o algoritmo de Ant Colony Optimization (ACO) tende a demorar mais que o Algoritmo Genético (AG). Isso ocorre porque o ACO cria uma quantidade maior de soluções (indivíduos) durante cada iteração, utilizando o heurístico para construir layouts de forma mais detalhada. Em contrapartida, o AG utiliza o heurístico apenas na geração da população inicial e, a partir daí, evolui as soluções por meio de operadores genéticos, o que resulta em um processamento mais rápido.
 
 **Resultados Visuais:**
-- A seguir, você pode conferir imagens comparativas dos resultados obtidos pelos algoritmos ACO e AG:
+- Layout otimizado em uma execução usando AG:
+  ![image](https://github.com/user-attachments/assets/edb158aa-425c-4a7b-b392-3d42694c7735)
+
+- Layout otimizado em uma execução usando ACO:
+  ![AntColony](https://github.com/user-attachments/assets/fdaa35cb-3342-49df-a5f0-90ae03f8b787)
+
