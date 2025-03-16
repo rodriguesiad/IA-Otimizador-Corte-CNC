@@ -152,19 +152,6 @@ class AntColony(LayoutDisplayMixin, PackingBase):
 
         for key in self.pheromones_direction:
             self.pheromones_direction[key] *= evap_factor
-
-    def get_best_solution(self, solutions):
-        """
-        Dado um conjunto de soluções, retorna a solução com maior qualidade.
-        Supondo que cada solução possua a chave 'quality'.
-        """
-        best = None
-        best_quality = -float("inf")
-        for sol in solutions:
-            if sol["quality"] > best_quality:
-                best_quality = sol["quality"]
-                best = sol["layout"]
-        return best
     
     def evaluate_layout(self, layout):
         """
