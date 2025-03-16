@@ -77,10 +77,8 @@ class GeneticAlgorithm(LayoutDisplayMixin):
             )
             individuo_empacotado = gerar_individuo.empacotar()
             self.POP.append(individuo_empacotado)
-            self.display_layout(individuo_empacotado, title=f"Individuo - {i}")
-            print(f"\nIndividuo - {i}: {individuo_empacotado}")
             
-        print("População inicial criada")
+        print("População inicial criada!")
 
     def get_area(self, peca):
         if peca["tipo"] == "retangular":
@@ -101,33 +99,88 @@ class GeneticAlgorithm(LayoutDisplayMixin):
         altura_rotacionada = abs(largura_original * math.sin(angulo)) + abs(altura_original * math.cos(angulo))
         return int(round(largura_rotacionada)), int(round(altura_rotacionada))
     
+    def get_circle_mask(self, raio):
+        """
+        Gera uma máscara booleana para um círculo com raio 'raio' e margem self.margem.
+        A máscara terá tamanho = 2*(raio + margem) + 1 e True para os pontos dentro do círculo expandido.
+        """
+        total = raio
+        # Cria uma grade de coordenadas
+        y, x = np.ogrid[-total:total+1, -total:total+1]
+        mask = x**2 + y**2 <= (raio)**2
+        return mask
+    
+    def is_point_inside_diamond(self, px, py, vertices):
+        """
+        Verifica se um ponto (px, py) está dentro do diamante definido por seus vértices.
+        Utiliza a fórmula do produto vetorial para determinar se está dentro do losango.
+        """
+        A, B, C, D = vertices  # Vértices do diamante em ordem
+
+        def sign(p1, p2, p3):
+            return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+
+        b1 = sign((px, py), A, B) < 0.0
+        b2 = sign((px, py), B, C) < 0.0
+        b3 = sign((px, py), C, D) < 0.0
+        b4 = sign((px, py), D, A) < 0.0
+
+        return b1 == b2 == b3 == b4
+    
+    def get_rotated_vertices(self, peca, x, y):
+        """
+        Retorna os vértices reais do diamante após a rotação, preservando seu tamanho original.
+        """
+        largura = peca["largura"]
+        altura = peca["altura"]
+        cx, cy = x + largura / 2, y + altura / 2 
+        angulo = math.radians(peca["rotacao"])
+
+        # Vértices antes da rotação
+        vertices_originais = [
+            (cx, y),  # Topo
+            (x + largura, cy),  # Direita
+            (cx, y + altura),  # Base
+            (x, cy)  # Esquerda
+        ]
+
+        # Aplica rotação a cada vértice
+        vertices_rotacionados = [
+            (
+                (vx - cx) * math.cos(angulo) - (vy - cy) * math.sin(angulo) + cx,
+                (vx - cx) * math.sin(angulo) + (vy - cy) * math.cos(angulo) + cy
+            )
+            for vx, vy in vertices_originais
+        ]
+
+        return vertices_rotacionados
+    
     def evaluate(self):
         """
-        Avalia cada indivíduo (layout) da população com base em:
-        - Aproveitamento da área (quanto maior, melhor).
-        - Penalizações para peças que estão fora dos limites da chapa.
-        - Penalizações para sobreposição de peças.
+        Avalia cada layout (indivíduo) da população com base em:
+        - Aproveitamento da área (usada em relação à área total da chapa).
+        - Penalizações para sobreposição (contabilizada apenas nas áreas realmente ocupadas pelas peças).
+        - Penalizações para peças fora dos limites.
         - Penalizações se houver peças faltantes.
         """
-
         self.aptidao = []  # Reinicia as aptidões
 
-        # Parâmetros de penalização
-        penalty_overlap_factor = 0.1   # penalidade por célula sobreposta
-        penalty_missing_factor = 1     # penalidade por cada peça faltante
-        penalty_out_of_bounds_factor = 0.1  # penalidade por peça fora do limite
+        # Parâmetros de penalização (ajustáveis conforme experimentos)
+        penalty_overlap_factor = 0.001   # Penalidade por célula sobreposta
+        penalty_missing_factor = 1.0       # Penalidade por cada peça faltante
+        penalty_out_of_bounds_factor = 0.1 # Penalidade por peça fora dos limites
 
         total_sheet_area = self.sheet_width * self.sheet_height
 
-        # Avalia cada layout (indivíduo) da população
+        # Para cada layout da população:
         for individual in self.POP:
-            used_area = 0 
-            out_of_bounds_penalty = 0
+            used_area = 0.0
+            out_of_bounds_penalty = 0.0
 
-            # Se o layout tiver menos peças do que o esperado, aplica penalidade
+            # Se o layout tiver menos peças que o esperado, aplica penalidade
             missing_penalty = (len(self.initial_layout) - len(individual)) * penalty_missing_factor if len(individual) < len(self.initial_layout) else 0
 
-            # Cria um grid para detectar sobreposição
+            # Cria um grid para marcar as células efetivamente ocupadas
             grid = np.zeros((self.sheet_width, self.sheet_height), dtype=int)
 
             # Processa cada peça do layout
@@ -137,23 +190,55 @@ class GeneticAlgorithm(LayoutDisplayMixin):
                 x = peca["x"]
                 y = peca["y"]
 
-                # Verifica se o bounding box está dentro dos limites da chapa
+                # Verifica se a peça está fora dos limites (bounding box)
                 if x < 0 or y < 0 or x + width > self.sheet_width or y + height > self.sheet_height:
                     out_of_bounds_penalty += penalty_out_of_bounds_factor
 
-                # Apresenta o grid com a área ocupada pela peça
-                for i in range(x, min(x + width, self.sheet_width)):
-                    for j in range(y, min(y + height, self.sheet_height)):
-                        grid[i, j] += 1
+                # Marcação real no grid dependendo do tipo da peça:
+                if peca["tipo"] == "circular":
+                    raio = peca["r"]
+                    centro_x = x + raio
+                    centro_y = y + raio
+                    # Gera a máscara do círculo (com margem)
+                    mask = self.get_circle_mask(raio)
+                    mask_shape = mask.shape
+                    # Define a posição inicial para aplicar a máscara no grid
+                    start_x = int(round(centro_x - (raio)))
+                    start_y = int(round(centro_y - (raio )))
 
-            # Penaliza sobreposição: cada célula com valor > 1 indica sobreposição
-            overlap_cells = grid[grid > 1] - 1  # cada célula extra além da primeira
+                    for i in range(mask_shape[0]):
+                        for j in range(mask_shape[1]):
+                            if mask[i, j]:
+                                gx = start_x + i
+                                gy = start_y + j
+                                if 0 <= gx < self.sheet_width and 0 <= gy < self.sheet_height:
+                                    grid[gx, gy] += 1
+
+                elif peca["tipo"] == "diamante":
+                    # Obtém os vértices rotacionados do diamante
+                    vertices = self.get_rotated_vertices(peca, x, y)
+                    min_x = max(int(min(v[0] for v in vertices)), 0)
+                    max_x = min(int(max(v[0] for v in vertices)), self.sheet_width - 1)
+                    min_y = max(int(min(v[1] for v in vertices)), 0)
+                    max_y = min(int(max(v[1] for v in vertices)), self.sheet_height - 1)
+                    for i in range(min_x, max_x + 1):
+                        for j in range(min_y, max_y + 1):
+                            if self.is_point_inside_diamond(i, j, vertices):
+                                grid[i, j] += 1
+
+                else:  # Peças retangulares – sua forma coincide com o bounding box
+                    for i in range(x, min(x + width, self.sheet_width)):
+                        for j in range(y, min(y + height, self.sheet_height)):
+                            grid[i, j] += 1
+
+            # Penalização por sobreposição: para cada célula com valor > 1, desconta o excesso
+            overlap_cells = grid[grid > 1] - 1  # Cada célula extra além da primeira conta como sobreposição
             overlap_penalty = penalty_overlap_factor * np.sum(overlap_cells)
 
             # Cálculo do aproveitamento da área
             area_utilization = used_area / total_sheet_area
 
-            # Combina as métricas: queremos maximizar a utilização e minimizar as penalizações
+            # Combina as métricas: quanto maior a área utilizada e menor as penalizações, melhor o fitness
             fitness = area_utilization - (overlap_penalty + missing_penalty + out_of_bounds_penalty)
             self.aptidao.append(fitness)
 
@@ -169,7 +254,7 @@ class GeneticAlgorithm(LayoutDisplayMixin):
         
         # Percentuais para os operadores genéticos:
         tx_cruzamento_simples = 30   # 30% dos indivíduos serão gerados via cruzamento simples
-        tx_mutacao = 2               # 2% dos indivíduos sofrerão mutação
+        tx_mutacao = 5               # 2% dos indivíduos sofrerão mutação
 
         print("Iniciando a execução dos operadores genéticos...")
 
@@ -186,7 +271,7 @@ class GeneticAlgorithm(LayoutDisplayMixin):
             print(f"Geração {geracao}: Melhor Aptidão = {melhor_fitness}")
 
             # --- Elitismo ---
-            elitismo_count = int(self.TAM_POP * 0.1)
+            elitismo_count = int(self.TAM_POP * 0.01)
             self.elitismo(elitismo_count)
 
             # --- Cruzamento Simples ---
