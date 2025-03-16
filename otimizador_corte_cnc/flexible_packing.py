@@ -129,17 +129,6 @@ class FlexiblePacking:
                         if self.grid[grid_x, grid_y] == 1:
                             return False
 
-            # Verificação extra para círculos já posicionados (mantida se necessário)
-            for outra_peca in self.layout:
-                if outra_peca["tipo"] == "circular":
-                    outro_raio = outra_peca["r"]
-                    outro_centro_x = outra_peca["x"] + outro_raio
-                    outro_centro_y = outra_peca["y"] + outro_raio
-                    distancia_centros = math.sqrt((centro_x - outro_centro_x)**2 + (centro_y - outro_centro_y)**2)
-                    if distancia_centros < (raio + outro_raio + self.margem):
-                        return False
-
-
         elif peca["tipo"] == "diamante":
             vertices = self.get_rotated_vertices(peca, x, y)
 
