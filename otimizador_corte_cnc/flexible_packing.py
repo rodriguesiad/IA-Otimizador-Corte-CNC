@@ -1,6 +1,6 @@
+from common.packing_base import PackingBase
 import copy
 import numpy as np
-from common.packing_base import PackingBase
 
 """
 Implementa um algoritmo flexível de empacotamento de peças em uma chapa, permitindo diferentes estratégias de posicionamento.

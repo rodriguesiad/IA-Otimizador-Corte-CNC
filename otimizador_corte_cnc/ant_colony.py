@@ -188,10 +188,11 @@ class AntColony(LayoutDisplayMixin, PackingBase):
                 raio = peca["r"]
                 centro_x = x + raio
                 centro_y = y + raio
-                mask = self.get_circle_mask(raio, margem=0)  # Usamos margem=0 para cálculo de área efetiva
+                mask = self.get_circle_mask(raio, margem=0)
                 mask_shape = mask.shape
                 start_x = int(round(centro_x - raio))
                 start_y = int(round(centro_y - raio))
+
                 for i in range(mask_shape[0]):
                     for j in range(mask_shape[1]):
                         if mask[i, j]:
@@ -206,6 +207,7 @@ class AntColony(LayoutDisplayMixin, PackingBase):
                 max_x = min(int(max(v[0] for v in vertices)), self.sheet_width - 1)
                 min_y = max(int(min(v[1] for v in vertices)), 0)
                 max_y = min(int(max(v[1] for v in vertices)), self.sheet_height - 1)
+                
                 for i in range(min_x, max_x + 1):
                     for j in range(min_y, max_y + 1):
                         if self.is_point_inside_diamond(i, j, vertices):
