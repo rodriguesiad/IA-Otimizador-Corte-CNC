@@ -23,7 +23,6 @@ class AntColony(LayoutDisplayMixin, PackingBase):
         self.sheet_height = sheet_height
         self.initial_layout = recortes_disponiveis
         self.optimized_layout = None
-        self.avg_ant_time = 0
         self.initialize_pheromones()
         print("Ant Colony Optimization Initialized.")
 
@@ -188,7 +187,8 @@ class AntColony(LayoutDisplayMixin, PackingBase):
         
         for it in range(self.num_iterations):
             solutions = []
-            
+            total_individual_time = 0.0
+
             for ant in range(self.num_ants):
                 start_time = time.time()
 
