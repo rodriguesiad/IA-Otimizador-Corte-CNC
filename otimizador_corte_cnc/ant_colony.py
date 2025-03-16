@@ -1,8 +1,9 @@
 from common.layout_display import LayoutDisplayMixin
 from flexible_packing import FlexiblePacking
+from common.packing_base import PackingBase
 import random
 import copy
-from common.packing_base import PackingBase
+import time
 
 class AntColony(LayoutDisplayMixin, PackingBase):
     def __init__(self, num_ants, num_iterations, sheet_width, sheet_height, recortes_disponiveis):
@@ -22,6 +23,7 @@ class AntColony(LayoutDisplayMixin, PackingBase):
         self.sheet_height = sheet_height
         self.initial_layout = recortes_disponiveis
         self.optimized_layout = None
+        self.avg_ant_time = 0
         self.initialize_pheromones()
         print("Ant Colony Optimization Initialized.")
 
@@ -180,12 +182,16 @@ class AntColony(LayoutDisplayMixin, PackingBase):
         # Lista para armazenar soluções de cada iteração
         best_overall = None
         best_overall_quality = -float("inf")
+        avg_individual_times = [] 
         
         print("Iniciando o loop principal do Ant Colony...")
-
+        
         for it in range(self.num_iterations):
             solutions = []
+            
             for ant in range(self.num_ants):
+                start_time = time.time()
+
                 sol = self.construct_solution(ant)
                 layout = sol["layout"]
                 quality = self.evaluate_layout(layout)
@@ -203,12 +209,22 @@ class AntColony(LayoutDisplayMixin, PackingBase):
                 if quality > best_overall_quality:
                     best_overall_quality = quality
                     best_overall = layout
-            
+
+                end_time = time.time()
+                total_individual_time += (end_time - start_time)
+
+            # Calcula tempo médio gasto pelas formigas para criar a solução
+            avg_individual_time = total_individual_time / self.num_ants
+            avg_individual_times.append(avg_individual_time)
+            print(f"Iteração {it}: Melhor qualidade = {best_overall_quality} | Tempo médio por indivíduo = {avg_individual_time:.4f} s")
+
             # Atualiza os feromônios com base nas soluções desta iteração
             self.update_pheromones(solutions)
             # Aplica evaporação
             self.evaporate_pheromones()
-            print(f"Iteração {it}: Melhor qualidade = {best_overall_quality}")
+        
+        overall_avg_time = sum(avg_individual_times) / len(avg_individual_times)
+        print(f"Tempo médio total por indivíduo: {overall_avg_time:.4f} s")
         
         self.optimized_layout = best_overall
         return self.optimized_layout
@@ -225,17 +241,37 @@ class AntColony(LayoutDisplayMixin, PackingBase):
             used_area += self.get_area(peca)
         return used_area / total_sheet_area 
 
+    import time
+
     def optimize_and_display(self):
         """
-        Displays the initial layout, runs the optimization, and then displays the optimized layout.
+        Exibe o layout inicial, executa a otimização, exibe o layout otimizado e reporta:
+        - Tempo de processamento total.
+        - Aproveitamento da área (indicador de economia de matéria-prima).
         """
-        # Display initial layout
+        # Exibe o layout inicial
         self.display_layout(self.initial_layout, title="Initial Layout - Ant Colony")
-
-        # Run the optimization (this should update self.optimized_layout)
+        
+        # Registra o tempo de início
+        start_time = time.time()
+        
+        # Executa a otimização
         self.optimized_layout = self.run()
         
-        # Display optimized layout
+        # Registra o tempo de término e calcula o tempo total
+        end_time = time.time()
+        total_time = end_time - start_time
+        
+        # Calcula o aproveitamento da área do layout otimizado
+        area_utilization = self.evaluate_layout(self.optimized_layout)
+        
+        # Exibe o layout otimizado
         self.display_layout(self.optimized_layout, title="Optimized Layout - Ant Colony")
+        
+        # Exibe os resultados de tempo e aproveitamento
+        print(f"Tempo de processamento: {total_time:.2f} segundos")
+        print(f"Aproveitamento da área: {area_utilization*100:.2f}%")
+        
         return self.optimized_layout
+
     
