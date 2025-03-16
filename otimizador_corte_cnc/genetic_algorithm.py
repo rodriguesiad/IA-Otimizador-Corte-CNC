@@ -43,29 +43,35 @@ class GeneticAlgorithm(LayoutDisplayMixin, PackingBase):
         n_fixed = len(fixed_configs)
 
         for i in range(self.TAM_POP):
-            # Cria uma cópia dos recortes disponíveis
             individuo = copy.deepcopy(self.initial_layout)
             
             if i < n_fixed:
-                # Usa a configuração fixa
                 config = fixed_configs[i]
                 if config["order"] == "desc":
-                    # Ordena do maior para o menor (baseado na área)
                     individuo.sort(key=lambda p: self.get_area(p), reverse=True)
                 else:
-                    # Ordena do menor para o maior
                     individuo.sort(key=lambda p: self.get_area(p), reverse=False)
                 varrer_esquerda_direita = config["varrer_esquerda_direita"]
                 varrer_cima_baixo = config["varrer_cima_baixo"]
                 priorizar_horizontal = config["priorizar_horizontal"]
             else:
-                # Para os demais indivíduos, usa ordem e varredura aleatória
                 random.shuffle(individuo)
                 varrer_esquerda_direita = random.choice([True, False])
                 varrer_cima_baixo = random.choice([True, False])
                 priorizar_horizontal = random.choice([True, False])
-            
-            # Cria o indivíduo usando o FlexiblePacking com as configurações definidas
+                
+                # Aplica rotação diferente para uma porcentagem dos indivíduos (aproximadamente 30%)
+                for peca in individuo:
+                    if peca["tipo"] == "diamante":
+                        if random.random() < 0.3:
+                            peca["rotacao"] = random.choice(range(0, 100, 10))
+                        else:
+                            peca["rotacao"] = 0
+                    elif peca["tipo"] == "retangular":
+                        peca["rotacao"] = random.choice([0, 90])
+                    else:
+                        peca["rotacao"] = 0
+
             gerar_individuo = FlexiblePacking(
                 sheet_width=self.sheet_width,
                 sheet_height=self.sheet_height,
@@ -78,7 +84,7 @@ class GeneticAlgorithm(LayoutDisplayMixin, PackingBase):
             individuo_empacotado = gerar_individuo.empacotar()
             self.POP.append(individuo_empacotado)
             
-        print("População inicial criada!")
+        print(f"População inicial criada!")
     
     def evaluate(self):
         """
@@ -177,9 +183,10 @@ class GeneticAlgorithm(LayoutDisplayMixin, PackingBase):
         Retorna o melhor indivíduo encontrado ao final das gerações.
         """ 
         
-        # Percentuais para os operadores genéticos:
-        tx_cruzamento_simples = 30   # 30% dos indivíduos serão gerados via cruzamento simples
-        tx_mutacao = 5               # 2% dos indivíduos sofrerão mutação
+        # Percentuais para os operadores genéticos
+        tx_cruzamento_simples = 94.09   
+        tx_mutacao = 5               
+        tx_eletismo = 0.01
 
         print("Iniciando a execução dos operadores genéticos...")
 
@@ -196,7 +203,7 @@ class GeneticAlgorithm(LayoutDisplayMixin, PackingBase):
             print(f"Geração {geracao}: Melhor Aptidão = {melhor_fitness}")
 
             # --- Elitismo ---
-            elitismo_count = int(self.TAM_POP * 0.01)
+            elitismo_count = int(self.TAM_POP * tx_eletismo)
             self.elitismo(elitismo_count)
 
             # --- Cruzamento Simples ---
@@ -214,7 +221,7 @@ class GeneticAlgorithm(LayoutDisplayMixin, PackingBase):
             # --- Mutação ---
             qtd_mutacao = int(self.TAM_POP * tx_mutacao / 100)
             for _ in range(qtd_mutacao):
-                individuo_index = np.random.randint(0, self.TAM_POP)
+                individuo_index = np.random.randint(0, len(self.POP_AUX))
                 self.mutacao(individuo_index)
 
             # Substitui a população atual pelos descendentes gerados
