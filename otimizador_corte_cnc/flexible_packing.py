@@ -189,6 +189,23 @@ class FlexiblePacking:
 
         return x, y
 
+    def is_point_inside_diamond(self, px, py, vertices):
+        """
+        Verifica se um ponto (px, py) está dentro do diamante definido por seus vértices.
+        Utiliza a fórmula do produto vetorial para determinar se está dentro do losango.
+        """
+        A, B, C, D = vertices  # Vértices do diamante em ordem
+
+        def sign(p1, p2, p3):
+            return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+
+        b1 = sign((px, py), A, B) < 0.0
+        b2 = sign((px, py), B, C) < 0.0
+        b3 = sign((px, py), C, D) < 0.0
+        b4 = sign((px, py), D, A) < 0.0
+
+        return b1 == b2 == b3 == b4
+
     def marcar_ocupacao(self, peca):
         """
         Marca a área ocupada pela peça na matriz de ocupação, garantindo uma margem de 1 pixel.
@@ -243,24 +260,6 @@ class FlexiblePacking:
                     if 0 <= x + i < self.sheet_width and 0 <= y + j < self.sheet_height:
                         self.grid[x + i, y + j] = 1
 
-
-
-    def is_point_inside_diamond(self, px, py, vertices):
-        """
-        Verifica se um ponto (px, py) está dentro do diamante definido por seus vértices.
-        Utiliza a fórmula do produto vetorial para determinar se está dentro do losango.
-        """
-        A, B, C, D = vertices  # Vértices do diamante em ordem
-
-        def sign(p1, p2, p3):
-            return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
-
-        b1 = sign((px, py), A, B) < 0.0
-        b2 = sign((px, py), B, C) < 0.0
-        b3 = sign((px, py), C, D) < 0.0
-        b4 = sign((px, py), D, A) < 0.0
-
-        return b1 == b2 == b3 == b4
     
     def empacotar(self):
         """ Organiza as peças dentro da chapa considerando as configurações de varredura e margem. """
