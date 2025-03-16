@@ -165,72 +165,7 @@ class AntColony(LayoutDisplayMixin, PackingBase):
                 best_quality = sol["quality"]
                 best = sol["layout"]
         return best
-
-    def run(self):
-        """
-        Loop principal do algoritmo de Colônia de Formigas:
-        1. Inicializa os feromônios.
-        2. Para cada iteração:
-            - Cada formiga constrói uma solução.
-            - Avalia a qualidade de cada solução (usando um critério, por exemplo, aproveitamento de área).
-            - Atualiza os feromônios com base nas soluções.
-            - Aplica evaporação aos feromônios.
-            - (Opcional) Armazena a melhor solução da iteração.
-        3. Retorna a melhor solução encontrada (layout).
-        """
-        self.initialize_pheromones()
-
-        # Lista para armazenar soluções de cada iteração
-        best_overall = None
-        best_overall_quality = -float("inf")
-        avg_individual_times = []
-        
-        print("Iniciando o loop principal do Ant Colony...")
-        
-        for it in range(self.num_iterations):
-            solutions = []
-            total_individual_time = 0.0
-
-            for ant in range(self.num_ants):
-                start_time = time.time()
-
-                sol = self.construct_solution(ant)
-                layout = sol["layout"]
-                quality = self.evaluate_layout(layout)
-                solution_info = {
-                    "layout": layout,
-                    "scan": sol["scan"],
-                    "rotation": {i: peca["rotacao"] for i, peca in enumerate(self.initial_layout) if peca["tipo"] in ["retangular", "diamante"]},
-                    "direction": sol["direction"],
-                    "quality": quality
-                }
-
-                solutions.append(solution_info)
-                
-                # Atualiza a melhor solução global
-                if quality > best_overall_quality:
-                    best_overall_quality = quality
-                    best_overall = layout
-
-                end_time = time.time()
-                total_individual_time += (end_time - start_time)
-
-            # Calcula tempo médio gasto pelas formigas para criar a solução
-            avg_individual_time = total_individual_time / self.num_ants
-            avg_individual_times.append(avg_individual_time)
-            print(f"Iteração {it}: Melhor qualidade = {best_overall_quality} | Tempo médio por indivíduo = {avg_individual_time:.4f} s")
-
-            # Atualiza os feromônios com base nas soluções desta iteração
-            self.update_pheromones(solutions)
-            # Aplica evaporação
-            self.evaporate_pheromones()
-        
-        overall_avg_time = sum(avg_individual_times) / len(avg_individual_times)
-        print(f"Tempo médio total por indivíduo: {overall_avg_time:.4f} s")
-        
-        self.optimized_layout = best_overall
-        return self.optimized_layout
-
+    
     def evaluate_layout(self, layout):
         """
         Avalia a qualidade de um layout considerando:
@@ -302,6 +237,71 @@ class AntColony(LayoutDisplayMixin, PackingBase):
 
         quality = area_utilization - (overlap_penalty + missing_penalty + out_of_bounds_penalty)
         return quality
+
+    def run(self):
+        """
+        Loop principal do algoritmo de Colônia de Formigas:
+        1. Inicializa os feromônios.
+        2. Para cada iteração:
+            - Cada formiga constrói uma solução.
+            - Avalia a qualidade de cada solução (usando um critério, por exemplo, aproveitamento de área).
+            - Atualiza os feromônios com base nas soluções.
+            - Aplica evaporação aos feromônios.
+            - (Opcional) Armazena a melhor solução da iteração.
+        3. Retorna a melhor solução encontrada (layout).
+        """
+        self.initialize_pheromones()
+
+        # Lista para armazenar soluções de cada iteração
+        best_overall = None
+        best_overall_quality = -float("inf")
+        avg_individual_times = []
+        
+        print("Iniciando o loop principal do Ant Colony...")
+        
+        for it in range(self.num_iterations):
+            solutions = []
+            total_individual_time = 0.0
+
+            for ant in range(self.num_ants):
+                start_time = time.time()
+
+                sol = self.construct_solution(ant)
+                layout = sol["layout"]
+                quality = self.evaluate_layout(layout)
+                solution_info = {
+                    "layout": layout,
+                    "scan": sol["scan"],
+                    "rotation": {i: peca["rotacao"] for i, peca in enumerate(self.initial_layout) if peca["tipo"] in ["retangular", "diamante"]},
+                    "direction": sol["direction"],
+                    "quality": quality
+                }
+
+                solutions.append(solution_info)
+                
+                # Atualiza a melhor solução global
+                if quality > best_overall_quality:
+                    best_overall_quality = quality
+                    best_overall = layout
+
+                end_time = time.time()
+                total_individual_time += (end_time - start_time)
+
+            # Calcula tempo médio gasto pelas formigas para criar a solução
+            avg_individual_time = total_individual_time / self.num_ants
+            avg_individual_times.append(avg_individual_time)
+            print(f"Iteração {it}: Melhor qualidade = {best_overall_quality} | Tempo médio por indivíduo = {avg_individual_time:.4f} s")
+
+            # Atualiza os feromônios com base nas soluções desta iteração
+            self.update_pheromones(solutions)
+            # Aplica evaporação
+            self.evaporate_pheromones()
+        
+        overall_avg_time = sum(avg_individual_times) / len(avg_individual_times)
+        print(f"Tempo médio total por indivíduo: {overall_avg_time:.4f} s")
+        
+        self.optimized_layout = best_overall
+        return self.optimized_layout
 
     def optimize_and_display(self):
         """
