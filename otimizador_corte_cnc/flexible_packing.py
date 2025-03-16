@@ -1,6 +1,7 @@
 import copy
 import math
 import numpy as np
+from common.packing_base import PackingBase
 
 """
 Implementa um algoritmo flexível de empacotamento de peças em uma chapa, permitindo diferentes estratégias de posicionamento.
@@ -15,7 +16,7 @@ Implementa um algoritmo flexível de empacotamento de peças em uma chapa, permi
 
 Essa abordagem é ideal para otimizar o corte de materiais em processos industriais, como fabricação de móveis, corte de chapas metálicas, vidro, madeira e tecidos.
 """
-class FlexiblePacking:
+class FlexiblePacking(PackingBase):
     def __init__(self, sheet_width, sheet_height, recortes_disponiveis, varrer_esquerda_direita=True, varrer_cima_baixo=True,
                  priorizar_horizontal=True, margem=1):
         self.sheet_width = sheet_width
@@ -27,70 +28,6 @@ class FlexiblePacking:
         self.varrer_esquerda_direita = varrer_esquerda_direita
         self.varrer_cima_baixo = varrer_cima_baixo	
         self.priorizar_horizontal = priorizar_horizontal
-
-    def get_area(self, peca):
-        """ Retorna a área da peça """
-        if peca["tipo"] == "retangular":
-            return peca["largura"] * peca["altura"]
-        if peca["tipo"] == "circular":
-            return math.pi * (peca["r"] ** 2)
-        if peca["tipo"] == "diamante":
-            return (peca["largura"] * peca["altura"]) / 2
-        return 0
-
-    def get_bounding_box(self, peca):
-        """ Retorna a largura e altura reais da peça após rotação """
-        if peca["tipo"] == "circular":
-            return 2 * peca["r"], 2 * peca["r"]
-        
-        angulo = math.radians(peca["rotacao"])
-        largura_original = peca.get("largura", 2 * peca.get("r", 0))
-        altura_original = peca.get("altura", 2 * peca.get("r", 0))
-
-        # Calcula bounding box após rotação usando trigonometria
-        largura_rotacionada = abs(largura_original * math.cos(angulo)) + abs(altura_original * math.sin(angulo))
-        altura_rotacionada = abs(largura_original * math.sin(angulo)) + abs(altura_original * math.cos(angulo))
-
-        return int(round(largura_rotacionada)), int(round(altura_rotacionada))
-    
-    def get_rotated_vertices(self, peca, x, y):
-        """
-        Retorna os vértices reais do diamante após a rotação, preservando seu tamanho original.
-        """
-        largura = peca["largura"]
-        altura = peca["altura"]
-        cx, cy = x + largura / 2, y + altura / 2 
-        angulo = math.radians(peca["rotacao"])
-
-        # Vértices antes da rotação
-        vertices_originais = [
-            (cx, y),  # Topo
-            (x + largura, cy),  # Direita
-            (cx, y + altura),  # Base
-            (x, cy)  # Esquerda
-        ]
-
-        # Aplica rotação a cada vértice
-        vertices_rotacionados = [
-            (
-                (vx - cx) * math.cos(angulo) - (vy - cy) * math.sin(angulo) + cx,
-                (vx - cx) * math.sin(angulo) + (vy - cy) * math.cos(angulo) + cy
-            )
-            for vx, vy in vertices_originais
-        ]
-
-        return vertices_rotacionados
-    
-    def get_circle_mask(self, raio):
-        """
-        Gera uma máscara booleana para um círculo com raio 'raio' e margem self.margem.
-        A máscara terá tamanho = 2*(raio + margem) + 1 e True para os pontos dentro do círculo expandido.
-        """
-        total = raio + self.margem
-        # Cria uma grade de coordenadas
-        y, x = np.ogrid[-total:total+1, -total:total+1]
-        mask = x**2 + y**2 <= (raio + self.margem)**2
-        return mask
 
     def cabe_no_espaco(self, peca, x, y):
         """
@@ -185,23 +122,6 @@ class FlexiblePacking:
             y = self.sheet_height - altura
 
         return x, y
-
-    def is_point_inside_diamond(self, px, py, vertices):
-        """
-        Verifica se um ponto (px, py) está dentro do diamante definido por seus vértices.
-        Utiliza a fórmula do produto vetorial para determinar se está dentro do losango.
-        """
-        A, B, C, D = vertices  # Vértices do diamante em ordem
-
-        def sign(p1, p2, p3):
-            return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
-
-        b1 = sign((px, py), A, B) < 0.0
-        b2 = sign((px, py), B, C) < 0.0
-        b3 = sign((px, py), C, D) < 0.0
-        b4 = sign((px, py), D, A) < 0.0
-
-        return b1 == b2 == b3 == b4
 
     def marcar_ocupacao(self, peca):
         """

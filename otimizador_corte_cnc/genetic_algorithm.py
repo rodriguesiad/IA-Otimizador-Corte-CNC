@@ -1,11 +1,11 @@
 from common.layout_display import LayoutDisplayMixin
 import random
 import copy
-import math
 import numpy as np
 from flexible_packing import FlexiblePacking
+from common.packing_base import PackingBase
 
-class GeneticAlgorithm(LayoutDisplayMixin):
+class GeneticAlgorithm(LayoutDisplayMixin, PackingBase):
     def __init__(self, TAM_POP, recortes_disponiveis, sheet_width, sheet_height, numero_geracoes=100):
         print("Algoritmo Genético para Otimização do Corte de Chapa. Executado por Iad.")
         self.TAM_POP = TAM_POP
@@ -79,81 +79,6 @@ class GeneticAlgorithm(LayoutDisplayMixin):
             self.POP.append(individuo_empacotado)
             
         print("População inicial criada!")
-
-    def get_area(self, peca):
-        if peca["tipo"] == "retangular":
-            return peca["largura"] * peca["altura"]
-        elif peca["tipo"] == "circular":
-            return math.pi * (peca["r"] ** 2)
-        elif peca["tipo"] == "diamante":
-            return (peca["largura"] * peca["altura"]) / 2
-        return 0
-
-    def get_bounding_box(self, peca):
-        if peca["tipo"] == "circular":
-            return 2 * peca["r"], 2 * peca["r"]
-        angulo = math.radians(peca["rotacao"])
-        largura_original = peca.get("largura", 2 * peca.get("r", 0))
-        altura_original = peca.get("altura", 2 * peca.get("r", 0))
-        largura_rotacionada = abs(largura_original * math.cos(angulo)) + abs(altura_original * math.sin(angulo))
-        altura_rotacionada = abs(largura_original * math.sin(angulo)) + abs(altura_original * math.cos(angulo))
-        return int(round(largura_rotacionada)), int(round(altura_rotacionada))
-    
-    def get_circle_mask(self, raio):
-        """
-        Gera uma máscara booleana para um círculo com raio 'raio' e margem self.margem.
-        A máscara terá tamanho = 2*(raio + margem) + 1 e True para os pontos dentro do círculo expandido.
-        """
-        total = raio
-        # Cria uma grade de coordenadas
-        y, x = np.ogrid[-total:total+1, -total:total+1]
-        mask = x**2 + y**2 <= (raio)**2
-        return mask
-    
-    def is_point_inside_diamond(self, px, py, vertices):
-        """
-        Verifica se um ponto (px, py) está dentro do diamante definido por seus vértices.
-        Utiliza a fórmula do produto vetorial para determinar se está dentro do losango.
-        """
-        A, B, C, D = vertices  # Vértices do diamante em ordem
-
-        def sign(p1, p2, p3):
-            return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
-
-        b1 = sign((px, py), A, B) < 0.0
-        b2 = sign((px, py), B, C) < 0.0
-        b3 = sign((px, py), C, D) < 0.0
-        b4 = sign((px, py), D, A) < 0.0
-
-        return b1 == b2 == b3 == b4
-    
-    def get_rotated_vertices(self, peca, x, y):
-        """
-        Retorna os vértices reais do diamante após a rotação, preservando seu tamanho original.
-        """
-        largura = peca["largura"]
-        altura = peca["altura"]
-        cx, cy = x + largura / 2, y + altura / 2 
-        angulo = math.radians(peca["rotacao"])
-
-        # Vértices antes da rotação
-        vertices_originais = [
-            (cx, y),  # Topo
-            (x + largura, cy),  # Direita
-            (cx, y + altura),  # Base
-            (x, cy)  # Esquerda
-        ]
-
-        # Aplica rotação a cada vértice
-        vertices_rotacionados = [
-            (
-                (vx - cx) * math.cos(angulo) - (vy - cy) * math.sin(angulo) + cx,
-                (vx - cx) * math.sin(angulo) + (vy - cy) * math.cos(angulo) + cy
-            )
-            for vx, vy in vertices_originais
-        ]
-
-        return vertices_rotacionados
     
     def evaluate(self):
         """
