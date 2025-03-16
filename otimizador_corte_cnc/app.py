@@ -21,7 +21,7 @@ def main():
     ]
 
     # Instantiate and run Ant Colony Optimization.
-    ant_optimizer = AntColony(num_ants=5, num_iterations=10, sheet_width=sheet_width,
+    ant_optimizer = AntColony(num_ants=10, num_iterations=10, sheet_width=sheet_width,
                               sheet_height=sheet_height, recortes_disponiveis=recortes_disponiveis)
     print("Running Ant Colony Optimization...")
     ant_optimized_layout = ant_optimizer.optimize_and_display()

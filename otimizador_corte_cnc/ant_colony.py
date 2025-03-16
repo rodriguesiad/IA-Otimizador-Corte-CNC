@@ -4,6 +4,7 @@ from common.packing_base import PackingBase
 import random
 import copy
 import time
+import numpy as np
 
 class AntColony(LayoutDisplayMixin, PackingBase):
     def __init__(self, num_ants, num_iterations, sheet_width, sheet_height, recortes_disponiveis):
@@ -232,17 +233,75 @@ class AntColony(LayoutDisplayMixin, PackingBase):
 
     def evaluate_layout(self, layout):
         """
-        Avalia a qualidade de um layout. Por exemplo, pode ser o aproveitamento da área (área utilizada/área total)
-        menos penalizações (como sobreposição ou desperdício). Aqui, você pode reutilizar ou adaptar o método evaluate
-        que já possui, mas retornando um valor numérico.
+        Avalia a qualidade de um layout considerando:
+        - Aproveitamento da área (área utilizada / área total da chapa);
+        - Penalizações para sobreposição (somente nas células ocupadas em excesso);
+        - Penalizações para peças fora dos limites;
+        - Penalizações se houver peças faltantes.
+        
+        Retorna um valor numérico, onde valores maiores indicam layouts melhores.
         """
         total_sheet_area = self.sheet_width * self.sheet_height
         used_area = 0.0
+        out_of_bounds_penalty = 0.0
+
+        # Se o layout tiver menos peças que o esperado, aplica penalidade
+        missing_penalty = (len(self.initial_layout) - len(layout)) * 1.0 if len(layout) < len(self.initial_layout) else 0
+
+        # Cria um grid para marcar as células efetivamente ocupadas
+        grid = np.zeros((self.sheet_width, self.sheet_height), dtype=int)
+
         for peca in layout:
             used_area += self.get_area(peca)
-        return used_area / total_sheet_area 
+            width, height = self.get_bounding_box(peca)
+            x = peca["x"]
+            y = peca["y"]
 
-    import time
+            # Verifica se o bounding box da peça está fora dos limites
+            if x < 0 or y < 0 or x + width > self.sheet_width or y + height > self.sheet_height:
+                out_of_bounds_penalty += 0.1
+
+            # Marcação no grid, de acordo com o tipo da peça:
+            if peca["tipo"] == "circular":
+                raio = peca["r"]
+                centro_x = x + raio
+                centro_y = y + raio
+                mask = self.get_circle_mask(raio, margem=0)  # Usamos margem=0 para cálculo de área efetiva
+                mask_shape = mask.shape
+                start_x = int(round(centro_x - raio))
+                start_y = int(round(centro_y - raio))
+                for i in range(mask_shape[0]):
+                    for j in range(mask_shape[1]):
+                        if mask[i, j]:
+                            gx = start_x + i
+                            gy = start_y + j
+                            if 0 <= gx < self.sheet_width and 0 <= gy < self.sheet_height:
+                                grid[gx, gy] += 1
+
+            elif peca["tipo"] == "diamante":
+                vertices = self.get_rotated_vertices(peca, x, y)
+                min_x = max(int(min(v[0] for v in vertices)), 0)
+                max_x = min(int(max(v[0] for v in vertices)), self.sheet_width - 1)
+                min_y = max(int(min(v[1] for v in vertices)), 0)
+                max_y = min(int(max(v[1] for v in vertices)), self.sheet_height - 1)
+                for i in range(min_x, max_x + 1):
+                    for j in range(min_y, max_y + 1):
+                        if self.is_point_inside_diamond(i, j, vertices):
+                            grid[i, j] += 1
+
+            else:  # Retangular
+                for i in range(x, min(x + width, self.sheet_width)):
+                    for j in range(y, min(y + height, self.sheet_height)):
+                        grid[i, j] += 1
+
+        # Penalização por sobreposição: cada célula ocupada mais de uma vez gera penalização
+        overlap_cells = grid[grid > 1] - 1
+        overlap_penalty = 0.001 * np.sum(overlap_cells)
+
+        area_utilization = used_area / total_sheet_area
+
+        quality = area_utilization - (overlap_penalty + missing_penalty + out_of_bounds_penalty)
+        return quality
 
     def optimize_and_display(self):
         """
