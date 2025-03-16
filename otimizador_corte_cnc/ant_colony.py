@@ -23,7 +23,6 @@ class AntColony(LayoutDisplayMixin, PackingBase):
         self.sheet_height = sheet_height
         self.initial_layout = recortes_disponiveis
         self.optimized_layout = None
-        self.initialize_pheromones()
         print("Ant Colony Optimization Initialized.")
 
     def initialize_pheromones(self):
@@ -92,7 +91,7 @@ class AntColony(LayoutDisplayMixin, PackingBase):
         priorizar_horizontal = (direction_choice == "horizontal")
 
         # 5. Constrói o layout com FlexiblePacking
-        gerar_individuo = FlexiblePacking(
+        gerar_layout = FlexiblePacking(
             sheet_width=self.sheet_width,
             sheet_height=self.sheet_height,
             recortes_disponiveis=recortes,
@@ -101,9 +100,9 @@ class AntColony(LayoutDisplayMixin, PackingBase):
             priorizar_horizontal=priorizar_horizontal,
             margem=1
         )
-        layout = gerar_individuo.empacotar()
+        layout = gerar_layout.empacotar()
         
-        print('Indivíduo criado!')
+        print('Layout criado!')
         # Retorne o layout juntamente com as escolhas feitas
         return {"layout": layout, "scan": selected_scan, "direction": direction_choice}
 
@@ -178,10 +177,12 @@ class AntColony(LayoutDisplayMixin, PackingBase):
             - (Opcional) Armazena a melhor solução da iteração.
         3. Retorna a melhor solução encontrada (layout).
         """
+        self.initialize_pheromones()
+
         # Lista para armazenar soluções de cada iteração
         best_overall = None
         best_overall_quality = -float("inf")
-        avg_individual_times = [] 
+        avg_individual_times = []
         
         print("Iniciando o loop principal do Ant Colony...")
         
