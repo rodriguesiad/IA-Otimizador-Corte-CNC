@@ -108,20 +108,6 @@ class FlexiblePacking(PackingBase):
 
         return True
 
-    def ajustar_posicao_para_dentro(self, peca, x, y):
-        """
-        Ajusta a posição da peça para garantir que ela não ultrapasse os limites da chapa.
-        """
-        largura, altura = self.get_bounding_box(peca)
-
-        # Se estiver saindo da chapa, ajusta o x e y
-        if x + largura > self.sheet_width:
-            x = self.sheet_width - largura
-        if y + altura > self.sheet_height:
-            y = self.sheet_height - altura
-
-        return x, y
-
     def marcar_ocupacao(self, peca):
         """
         Marca a área ocupada pela peça na matriz de ocupação, garantindo uma margem de 1 pixel.
