@@ -38,6 +38,13 @@ A solução proposta utiliza uma abordagem híbrida baseada em heurísticas para
 
 Ambos os métodos usam a classe **PackingBase** para centralizar funções comuns (como o cálculo de área, determinação do bounding box, rotação de vértices, etc.), mantendo o código modular e facilitando a manutenção.
 
+### Especificações da Solução:
+
+A solução coloca uma margem de 1 pixel entre os elementos, garantindo espaço suficiente para evitar sobreposição ou erros mecânicos no corte.
+- Retângulos: São rotacionados apenas em 0º ou 90º.
+- Diamantes: Podem ser rotacionados de 0º a 90º em incrementos de 10º.
+- Círculos: Não são rotacionados, pois sua forma é simétrica.
+
 ## Requisitos
 
 - **Python 3.6+** (por causa das f-strings)
@@ -68,3 +75,11 @@ Certifique-se de que todas as dependências estejam instaladas. Você pode insta
    ```
 
 Cada execução exibirá o layout inicial e o layout otimizado utilizando o método de exibição presente no `LayoutDisplayMixin`.
+
+## Comentários
+
+**Desempenho dos Algoritmos:**
+- Observou-se que o algoritmo de Ant Colony Optimization (ACO) tende a demorar mais que o Algoritmo Genético (AG). Isso ocorre porque o ACO cria uma quantidade maior de soluções (indivíduos) durante cada iteração, utilizando o heurístico para construir layouts de forma mais detalhada. Em contrapartida, o AG utiliza o heurístico apenas na geração da população inicial e, a partir daí, evolui as soluções por meio de operadores genéticos, o que resulta em um processamento mais rápido.
+
+**Resultados Visuais:**
+- A seguir, você pode conferir imagens comparativas dos resultados obtidos pelos algoritmos ACO e AG:
