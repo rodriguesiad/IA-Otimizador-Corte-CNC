@@ -80,6 +80,17 @@ class FlexiblePacking:
         ]
 
         return vertices_rotacionados
+    
+    def get_circle_mask(self, raio):
+        """
+        Gera uma máscara booleana para um círculo com raio 'raio' e margem self.margem.
+        A máscara terá tamanho = 2*(raio + margem) + 1 e True para os pontos dentro do círculo expandido.
+        """
+        total = raio + self.margem
+        # Cria uma grade de coordenadas
+        y, x = np.ogrid[-total:total+1, -total:total+1]
+        mask = x**2 + y**2 <= (raio + self.margem)**2
+        return mask
 
     def cabe_no_espaco(self, peca, x, y):
         """
@@ -92,45 +103,42 @@ class FlexiblePacking:
             centro_x = x + raio
             centro_y = y + raio
 
-            # Verifica se o círculo está dentro dos limites
-            if (
-                centro_x - raio - self.margem < 0 or 
+            # Verifica se o círculo (com margem) está dentro dos limites
+            if (centro_x - raio - self.margem < 0 or 
                 centro_x + raio + self.margem > self.sheet_width or 
                 centro_y - raio - self.margem < 0 or 
-                centro_y + raio + self.margem > self.sheet_height
-            ):
+                centro_y + raio + self.margem > self.sheet_height):
                 return False
 
-            # Verifica sobreposição com outras peças no grid
-            range_i = list(range(-raio - self.margem, raio + self.margem + 1))
-            range_j = list(range(-raio - self.margem, raio + self.margem + 1))
+            # Obtém a máscara do círculo
+            mask = self.get_circle_mask(raio)
+            mask_shape = mask.shape
 
-            if not self.varrer_esquerda_direita:
-                range_i.reverse()
-            if not self.varrer_cima_baixo:
-                range_j.reverse()
+            # Determina a posição inicial da máscara no grid
+            start_x = int(round(centro_x - (raio + self.margem)))
+            start_y = int(round(centro_y - (raio + self.margem)))
 
-            for i in range_i:
-                for j in range_j:
-                    if i ** 2 + j ** 2 <= (raio + self.margem) ** 2:
-                        cx, cy = int(round(centro_x + i)), int(round(centro_y + j))
-                        if 0 <= cx < self.sheet_width and 0 <= cy < self.sheet_height:
-                            if self.grid[cx, cy] == 1:
-                                return False
+            # Verifica a sobreposição usando a máscara
+            for i in range(mask_shape[0]):
+                for j in range(mask_shape[1]):
+                    if mask[i, j]:
+                        grid_x = start_x + i
+                        grid_y = start_y + j
+                        if grid_x < 0 or grid_x >= self.sheet_width or grid_y < 0 or grid_y >= self.sheet_height:
+                            continue
+                        if self.grid[grid_x, grid_y] == 1:
+                            return False
 
-            #  Adiciona verificação específica para círculos já posicionados
+            # Verificação extra para círculos já posicionados (mantida se necessário)
             for outra_peca in self.layout:
                 if outra_peca["tipo"] == "circular":
                     outro_raio = outra_peca["r"]
                     outro_centro_x = outra_peca["x"] + outro_raio
                     outro_centro_y = outra_peca["y"] + outro_raio
-
-                    # Calcula a distância entre os centros dos dois círculos
-                    distancia_centros = math.sqrt((centro_x - outro_centro_x) ** 2 + (centro_y - outro_centro_y) ** 2)
-
-                    # Se a distância for menor que a soma dos raios, há sobreposição
+                    distancia_centros = math.sqrt((centro_x - outro_centro_x)**2 + (centro_y - outro_centro_y)**2)
                     if distancia_centros < (raio + outro_raio + self.margem):
                         return False
+
 
         elif peca["tipo"] == "diamante":
             vertices = self.get_rotated_vertices(peca, x, y)
@@ -217,20 +225,18 @@ class FlexiblePacking:
             centro_x = x + raio
             centro_y = y + raio
 
-            range_i = range(-raio - self.margem, raio + self.margem + 1)
-            range_j = range(-raio - self.margem, raio + self.margem + 1)
-
-            if not self.varrer_esquerda_direita:
-                range_i = reversed(range_i)
-            if not self.varrer_cima_baixo:
-                range_j = reversed(range_j)
-
-            for i in range_i:
-                for j in range_j:
-                    if i ** 2 + j ** 2 <= (raio + self.margem) ** 2:
-                        cx, cy = int(centro_x + i), int(centro_y + j)
-                        if 0 <= cx < self.sheet_width and 0 <= cy < self.sheet_height:
-                            self.grid[cx, cy] = 1
+            mask = self.get_circle_mask(raio)
+            mask_shape = mask.shape
+            start_x = int(round(centro_x - (raio + self.margem)))
+            start_y = int(round(centro_y - (raio + self.margem)))
+            
+            for i in range(mask_shape[0]):
+                for j in range(mask_shape[1]):
+                    if mask[i, j]:
+                        grid_x = start_x + i
+                        grid_y = start_y + j
+                        if 0 <= grid_x < self.sheet_width and 0 <= grid_y < self.sheet_height:
+                            self.grid[grid_x, grid_y] = 1
 
         elif peca["tipo"] == "diamante":
             vertices = self.get_rotated_vertices(peca, x, y)
@@ -263,6 +269,11 @@ class FlexiblePacking:
     
     def empacotar(self):
         """ Organiza as peças dentro da chapa considerando as configurações de varredura e margem. """
+
+        # Reinicia layout e grid para evitar resíduos de execuções anteriores
+        self.layout = []
+        self.grid = np.zeros((self.sheet_width, self.sheet_height), dtype=int)
+
         for peca in self.recortes:
             encontrou_posicao = False
             
@@ -272,7 +283,7 @@ class FlexiblePacking:
             else:
                 # Mantém a rotação original primeiro, depois testa outras de 0 a 90 (se necessário)
                 rotacoes = [0] if peca["tipo"] == "circular" else [peca.get("rotacao", 0)] + [r for r in range(0, 100, 10) if r != peca.get("rotacao", 0)]
-
+            
             for rotacao in rotacoes:
                 peca["rotacao"] = rotacao
                 largura, altura = self.get_bounding_box(peca)
