@@ -28,35 +28,56 @@ class GeneticAlgorithm(LayoutDisplayMixin):
         - Configurações aleatórias de varredura.
         """
 
-        for _ in range(self.TAM_POP):
-            # Copia e embaralha os recortes
+        # Os primeiros indivíduos serão gerados em configurações fixas que tem maior possibilidade de criação de um indivíduo válido
+        fixed_configs = [
+            {"order": "desc", "varrer_esquerda_direita": True,  "varrer_cima_baixo": True,  "priorizar_horizontal": True},   # 1º: Ordenar do maior para menor, varredura original.
+            {"order": "desc", "varrer_esquerda_direita": False, "varrer_cima_baixo": False, "priorizar_horizontal": True},   # 2º: Descendente, varredura: direita→esquerda e de baixo para cima.
+            {"order": "desc", "varrer_esquerda_direita": True,  "varrer_cima_baixo": True,  "priorizar_horizontal": False},  # 3º: Descendente, varredura: de cima para baixo (alterando a prioridade para vertical).
+            {"order": "desc", "varrer_esquerda_direita": False, "varrer_cima_baixo": True,  "priorizar_horizontal": True},   # 4º: Descendente, varredura: de cima para baixo, mas com horizontal invertida.
+            {"order": "asc",  "varrer_esquerda_direita": False, "varrer_cima_baixo": False, "priorizar_horizontal": True},   # 5º: Ascendente (menor para maior), varredura: direita→esquerda e de baixo para cima.
+            {"order": "asc",  "varrer_esquerda_direita": True,  "varrer_cima_baixo": True,  "priorizar_horizontal": True},   # 6º: Ascendente, varredura: de cima para baixo (original).
+            {"order": "asc",  "varrer_esquerda_direita": False, "varrer_cima_baixo": True,  "priorizar_horizontal": True}    # 7º: Ascendente, varredura: de cima para baixo com horizontal invertida.
+        ]
+        n_fixed = len(fixed_configs)
+
+        #Adiciona indivíduo inicial na população
+        self.POP.append(copy.deepcopy(self.initial_layout))
+
+        for i in range(self.TAM_POP):
+            # Cria uma cópia dos recortes disponíveis
             individuo = copy.deepcopy(self.initial_layout)
-            random.shuffle(individuo)
-
-            # Aplica rotação aleatória nos recortes que podem girar (Comentada por aumentar demais a variabilidade dos indivíduos)
-            #for peca in individuo:
-            #    if peca["tipo"] in ["retangular", "diamante"]:  # Apenas essas podem girar
-            #        peca["rotacao"] = random.choice(range(0, 100, 10))
-
-            # Gera configurações aleatórias de varredura
-            varrer_esquerda_direita = random.choice([True, False])
-            varrer_cima_baixo = random.choice([True, False])
-            priorizar_horizontal = random.choice([True, False])
-
-            # Gera o indivíduo com essas configurações
+            
+            if i < n_fixed:
+                # Usa a configuração fixa
+                config = fixed_configs[i]
+                if config["order"] == "desc":
+                    # Ordena do maior para o menor (baseado na área)
+                    individuo.sort(key=lambda p: self.get_area(p), reverse=True)
+                else:
+                    # Ordena do menor para o maior
+                    individuo.sort(key=lambda p: self.get_area(p), reverse=False)
+                varrer_esquerda_direita = config["varrer_esquerda_direita"]
+                varrer_cima_baixo = config["varrer_cima_baixo"]
+                priorizar_horizontal = config["priorizar_horizontal"]
+            else:
+                # Para os demais indivíduos, usa ordem e varredura aleatória
+                random.shuffle(individuo)
+                varrer_esquerda_direita = random.choice([True, False])
+                varrer_cima_baixo = random.choice([True, False])
+                priorizar_horizontal = random.choice([True, False])
+            
+            # Cria o indivíduo usando o FlexiblePacking com as configurações definidas
             gerar_individuo = FlexiblePacking(
-                sheet_width=self.sheet_width, sheet_height=self.sheet_height,
+                sheet_width=self.sheet_width,
+                sheet_height=self.sheet_height,
                 recortes_disponiveis=individuo,
                 varrer_esquerda_direita=varrer_esquerda_direita,
                 varrer_cima_baixo=varrer_cima_baixo,
                 priorizar_horizontal=priorizar_horizontal,
                 margem=5
             )
-
-            # Empacota e adiciona à população
             individuo_empacotado = gerar_individuo.empacotar()
             self.POP.append(individuo_empacotado)
-    
 
     def evaluate(self):
         # Evaluate the fitness of individuals based on available parts.
