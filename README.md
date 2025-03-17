@@ -1,11 +1,13 @@
 
-# Otimizador de Cortes CNC
+# **Otimizador de Cortes CNC utilizando Ant Colony Optimization (ACO)**  
 
-Este repositório contém uma proposta de solução para uma atividade de Inteligência Artificial do curso de Sistemas de Informação. O objetivo é otimizar os pontos de corte de uma barra CNC com dimensões 200 x 100, distribuindo os recortes disponíveis de forma a minimizar desperdícios e evitar sobreposições.
+Este repositório apresenta uma solução para a atividade de Inteligência Artificial do curso de graduação em Sistemas de Informação, focada na otimização de cortes em chapas metálicas por meio de Algoritmos Evolutivos. O objetivo é organizar os recortes de forma a maximizar o aproveitamento da chapa CNC, reduzindo desperdícios e garantindo que as peças não se sobreponham nem ultrapassem os limites da chapa
 
-## Problema
+---
 
-Dada uma chapa de 200 (largura) x 100 (altura) e um conjunto de peças (recortes) definidos conforme abaixo:
+## **Problema**  
+
+Dada uma chapa de **200 (largura) x 100 (altura)** e um conjunto de peças (recortes) definidos conforme abaixo:  
 
 ```python
 recortes_disponiveis = [
@@ -23,68 +25,83 @@ recortes_disponiveis = [
     {"tipo": "circular", "r": 16, "x": 158, "y": 2}
 ]
 ```
+ ![INICIAL](https://github.com/user-attachments/assets/d5c61c37-4894-4ad5-a902-802db0e4564f)
 
-O desafio é encontrar a melhor disposição (layout) que permita cortar essas peças da chapa, maximizando o aproveitamento da área e garantindo que os recortes não se sobreponham nem ultrapassem os limites da chapa.
+O desafio consiste em encontrar a **melhor disposição (layout)** para esses recortes, garantindo um **uso eficiente da matéria-prima** e minimizando espaços vazios.  
 
-## Proposta de Solução
+---
 
-A solução proposta utiliza uma abordagem híbrida baseada em heurísticas para gerar layouts válidos. O algoritmo central é o **FlexiblePacking**, que aplica diferentes estratégias de varredura (por exemplo: da esquerda para a direita com varredura de cima para baixo, ou inversamente) para posicionar os recortes na chapa. Essa classe foi integrada em duas propostas de solução:
+## **Proposta de Solução**  
 
-1. **Algoritmo Genético (genetic_algorithm.py):**  
-   Utiliza o FlexiblePacking para gerar indivíduos (layouts) válidos, que são evoluídos ao longo de várias gerações por meio de operadores genéticos (seleção, cruzamento, mutação e elitismo).
+A solução utiliza o **Algoritmo de Otimização por Colônia de Formigas (ACO)**, que se inspira no comportamento de formigas para encontrar caminhos eficientes. Cada formiga gera uma solução viável de disposição dos recortes, guiando-se por feromônios artificiais que reforçam boas soluções ao longo das iterações.  
 
-2. **Ant Colony Optimization (ant_colony.py):**  
-   Inspira-se no comportamento de formigas, utilizando feromônios para guiar as decisões (como a configuração de varredura, ordem dos recortes, rotação e priorização horizontal/vertical) e construir soluções. Cada formiga constrói um layout usando o FlexiblePacking e os feromônios são atualizados com base na qualidade das soluções.
+A otimização ocorre através das seguintes estratégias:  
 
-Ambos os métodos usam a classe **PackingBase** para centralizar funções comuns (como o cálculo de área, determinação do bounding box, rotação de vértices, etc.), mantendo o código modular e facilitando a manutenção.
+- **Configuração da varredura:** Diferentes padrões de leitura da chapa são testados (exemplo: da esquerda para a direita, de baixo para cima, etc.).  
+- **Ordenação dos recortes:** A ordem das peças influencia no aproveitamento do espaço e é ajustada ao longo das iterações.  
+- **Rotação das peças:** Peças retangulares podem ser giradas 0° ou 90°, enquanto peças diamante podem ter rotações de 0° a 90° em incrementos de 10°.  
+- **Priorização horizontal/vertical:** Algumas execuções priorizam preenchimento horizontal antes do vertical e vice-versa, dependendo da heurística de feromônios.  
 
-### Especificações da Solução:
+A cada iteração, as soluções melhor avaliadas reforçam suas escolhas, permitindo que o algoritmo encontre um **layout otimizado** para a chapa.  
 
-A solução coloca uma margem de 1 pixel entre os elementos, garantindo espaço suficiente para evitar sobreposição ou erros mecânicos no corte.
-- Retângulos: São rotacionados apenas em 0º ou 90º.
-- Diamantes: Podem ser rotacionados de 0º a 90º em incrementos de 10º.
-- Círculos: Não são rotacionados, pois sua forma é simétrica.
+---
 
-## Requisitos
+## **FlexiblePacking: Heurística de Posicionamento de Recortes**  
 
-- **Python 3.6+** (por causa das f-strings)
-- **Numpy**
-- **Math** (biblioteca padrão do Python)
-- **common.layout_display** (para exibição dos layouts)  
-- **common.packing_base** (contendo a classe PackingBase)
+O **FlexiblePacking** é um módulo essencial que trabalha em conjunto com o **ACO** para garantir que os recortes sejam alocados corretamente na chapa. Ele implementa uma **heurística de empacotamento**, ou seja, um conjunto de regras para posicionar as peças respeitando as restrições do problema.  
 
-Certifique-se de que todas as dependências estejam instaladas. Você pode instalar as dependências com pip, se necessário.
+### **Funcionalidade Principal**  
+O **FlexiblePacking** recebe uma chapa e uma lista de recortes disponíveis e tenta alocar essas peças da forma mais eficiente possível, evitando sobreposições e respeitando os limites da chapa.  
 
-## Como Rodar o Projeto
+### **Características do FlexiblePacking:**  
+✅ **Ordem de varredura dinâmica:** Define a forma como os recortes são alocados na chapa, podendo ser da esquerda para a direita, de cima para baixo, entre outras variações.  
+✅ **Margem de segurança:** Adiciona um pequeno espaçamento entre os recortes para evitar sobreposição.  
+✅ **Rotação das peças:** Retângulos podem ser girados em 0° ou 90°, e diamantes podem ser girados de 0° a 90° em incrementos de 10°.  
+✅ **Verificação de ocupação:** Antes de posicionar um recorte, o algoritmo verifica se o espaço está livre para evitar colisões.  
 
-1. Clone o repositório:
+A cada nova solução gerada pelo **ACO**, o **FlexiblePacking** é chamado para validar e construir um layout viável.  
+
+---
+
+### **Especificações da Solução**  
+- **Retângulos** podem ser rotacionados em **0° ou 90°**.  
+- **Diamantes** podem ser rotacionados de **0° a 90° em incrementos de 10°**.  
+- **Círculos** não são rotacionados (pois são simétricos).  
+- **Margem de segurança** de **1 pixel** é aplicada entre as peças para evitar sobreposição.  
+
+---
+
+## **Requisitos**  
+- **Python 3.6+** (necessário para f-strings)  
+- **Numpy**  
+
+---
+
+## **Como Rodar o Projeto**  
+1. Clone o repositório:  
 
    ```bash
    git clone <URL-do-repositório>
    cd <nome-da-pasta-do-repositório>
    ```
 
-2. Para rodar o projeto:
-
-   - Descomente qual algoritmo evolutivo deseja usar
-   - Execute o comando:
-
+2. Execute o script principal:  
 
    ```bash
    python app.py
    ```
 
-Cada execução exibirá o layout inicial e o layout otimizado utilizando o método de exibição presente no `LayoutDisplayMixin`.
+Cada execução exibirá:  
+- **O layout inicial dos recortes na chapa.**  
+- **O layout otimizado gerado pelo ACO.**  
+- **Estatísticas sobre o aproveitamento da chapa e o tempo de execução.**  
 
-## Comentários
+---
 
-**Desempenho dos Algoritmos:**
-- Observou-se que o algoritmo de Ant Colony Optimization (ACO) tende a demorar mais que o Algoritmo Genético (AG). Isso ocorre porque o ACO cria uma quantidade maior de soluções (indivíduos) durante cada iteração, utilizando o heurístico para construir layouts de forma mais detalhada. Em contrapartida, o AG utiliza o heurístico apenas na geração da população inicial e, a partir daí, evolui as soluções por meio de operadores genéticos, o que resulta em um processamento mais rápido.
 
-**Resultados Visuais:**
-- Layout otimizado em uma execução usando AG:
-  ![image](https://github.com/user-attachments/assets/edb158aa-425c-4a7b-b392-3d42694c7735)
+## **Resultados Visuais**  
 
-- Layout otimizado em uma execução usando ACO:
-  ![AntColony](https://github.com/user-attachments/assets/fdaa35cb-3342-49df-a5f0-90ae03f8b787)
+- **Layout otimizado usando ACO:**
+![ACO-FINAL2](https://github.com/user-attachments/assets/ef8483f3-2886-4272-bb9f-6cf23b6c4e38)
+
 
