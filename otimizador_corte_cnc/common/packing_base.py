@@ -23,11 +23,14 @@ class PackingBase:
 
         if peca["tipo"] == "circular":
             return 2 * peca["r"], 2 * peca["r"]
+    
         angulo = math.radians(peca["rotacao"])
         largura_original = peca.get("largura", 2 * peca.get("r", 0))
         altura_original = peca.get("altura", 2 * peca.get("r", 0))
+        
         largura_rotacionada = abs(largura_original * math.cos(angulo)) + abs(altura_original * math.sin(angulo))
         altura_rotacionada = abs(largura_original * math.sin(angulo)) + abs(altura_original * math.cos(angulo))
+
         return int(round(largura_rotacionada)), int(round(altura_rotacionada))
     
     def get_rotated_vertices(self, peca, x, y):

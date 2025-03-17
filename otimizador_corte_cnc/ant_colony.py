@@ -24,6 +24,7 @@ class AntColony(LayoutDisplayMixin, PackingBase):
         self.sheet_height = sheet_height
         self.initial_layout = recortes_disponiveis
         self.optimized_layout = None
+        self.optimized_solution = None
         print("Ant Colony Optimization Initialized.")
 
     def initialize_pheromones(self):
@@ -244,6 +245,7 @@ class AntColony(LayoutDisplayMixin, PackingBase):
         # Lista para armazenar soluções de cada iteração
         best_overall = None
         best_overall_quality = -float("inf")
+        best_solution = None
         avg_individual_times = []
         
         print("Iniciando o loop principal do Ant Colony...")
@@ -272,6 +274,7 @@ class AntColony(LayoutDisplayMixin, PackingBase):
                 if quality > best_overall_quality:
                     best_overall_quality = quality
                     best_overall = layout
+                    best_solution = solution_info
 
                 end_time = time.time()
                 total_individual_time += (end_time - start_time)
@@ -290,6 +293,7 @@ class AntColony(LayoutDisplayMixin, PackingBase):
         print(f"Tempo médio total por indivíduo: {overall_avg_time:.4f} s")
         
         self.optimized_layout = best_overall
+        self.optimized_solution = best_solution
         return self.optimized_layout
 
     def optimize_and_display(self):
@@ -320,6 +324,7 @@ class AntColony(LayoutDisplayMixin, PackingBase):
         # Exibe os resultados de tempo e aproveitamento
         print(f"Tempo de processamento: {total_time:.2f} segundos")
         print(f"Aproveitamento da área: {area_utilization*100:.2f}%")
+        print(f"Solução: f{self.optimized_solution}")
         
         return self.optimized_layout
 
